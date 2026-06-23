@@ -1022,6 +1022,73 @@ def write_history_row(
         )
         conn.commit()
 
+def get_history_trends() -> Dict[str, Any]:
+    init_history_db()
+
+    windows = {
+        "1h": 12,
+        "6h": 72,
+        "24h": 288,
+    }
+
+    metrics = [
+        "bch_usd",
+        "btc_usd",
+        "bch_difficulty",
+        "bch_network_hashrate_eh",
+        "best_fair_value_ratio",
+        "best_prob_1plus",
+        "best_roi_pct",
+        "braiins_price_btc_per_ph_day",
+        "best_mrr_price_btc_per_ph_day",
+    ]
+
+    trends = {}
+
+    with sqlite3.connect(HISTORY_DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+
+        for label, n_rows in windows.items():
+            rows = conn.execute(
+                f"""
+                SELECT {", ".join(metrics)}
+                FROM run_history
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                (n_rows,),
+            ).fetchall()
+
+            rows = list(reversed(rows))
+
+            trends[label] = {
+                "rows": len(rows),
+                "metrics": {},
+            }
+
+            if len(rows) < 2:
+                continue
+
+            first = rows[0]
+            last = rows[-1]
+
+            for metric in metrics:
+                start = first[metric]
+                end = last[metric]
+
+                if start is None or end is None or start == 0:
+                    change_pct = None
+                else:
+                    change_pct = ((end - start) / start) * 100
+
+                trends[label]["metrics"][metric] = {
+                    "start": start,
+                    "end": end,
+                    "change_pct": change_pct,
+                }
+
+    return trends
+
 def send_telegram_alert(message: str) -> bool:
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         print("Telegram not configured; skipping alert.")
@@ -1066,6 +1133,7 @@ def run_engine() -> Dict[str, Any]:
 
     cheapest_price = min(s.current_price_btc_per_ph_day for s in scenarios)
     probability_table = calculate_probability_table(market, cheapest_price)
+    trends = get_history_trends()
 
     answer = (
         f"{best.recommendation}: best executable $200-$300 BCH strike is "
@@ -1098,6 +1166,7 @@ def run_engine() -> Dict[str, Any]:
             "slippage_pct": SLIPPAGE_PCT,
             "price_move_buffer_pct": PRICE_MOVE_BUFFER_PCT,
         },
+        "trends": trends,
     }
 
     write_jsonl_log(LOG_PATH, record)
