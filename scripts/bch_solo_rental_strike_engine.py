@@ -229,6 +229,17 @@ def classify_alert_tier(
 
     return "DO_NOT_RENT"
 
+def classify_market_regime(fair_value_ratio: float) -> str:
+    if fair_value_ratio >= 1.10:
+        return "DEEP_VALUE"
+    if fair_value_ratio >= 1.00:
+        return "VALUE"
+    if fair_value_ratio >= 0.90:
+        return "FAIR"
+    if fair_value_ratio >= 0.80:
+        return "OVERPRICED"
+    return "EXTREMELY_OVERPRICED"
+
 
 def recommendation_from_tier(alert_tier: str) -> str:
     if alert_tier in {"STRONG_RENT", "DEPLOY_NOW"}:
@@ -1134,13 +1145,15 @@ def run_engine() -> Dict[str, Any]:
     cheapest_price = min(s.current_price_btc_per_ph_day for s in scenarios)
     probability_table = calculate_probability_table(market, cheapest_price)
     trends = get_history_trends()
+    market_regime = classify_market_regime(best.fair_value_ratio)
 
     answer = (
         f"{best.recommendation}: best executable $200-$300 BCH strike is "
         f"{best.source.upper()} {best.name}, {best.hashrate_ph:.0f} PH/s for "
         f"{best.duration_hours:.2f}h, P1+={best.prob_1plus*100:.2f}%, "
         f"risk-adjusted ROI={best.risk_adjusted_roi_pct:.2f}%, "
-        f"FVR={best.fair_value_ratio:.3f}, tier={best.alert_tier}."
+        f"FVR={best.fair_value_ratio:.3f}, tier={best.alert_tier}, "
+        f"regime={market_regime}."
     )
 
     record = {
@@ -1167,6 +1180,7 @@ def run_engine() -> Dict[str, Any]:
             "price_move_buffer_pct": PRICE_MOVE_BUFFER_PCT,
         },
         "trends": trends,
+        "market_regime": market_regime,
     }
 
     write_jsonl_log(LOG_PATH, record)
