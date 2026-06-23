@@ -240,6 +240,40 @@ def classify_market_regime(fair_value_ratio: float) -> str:
         return "OVERPRICED"
     return "EXTREMELY_OVERPRICED"
 
+def calculate_opportunity_score(
+    fair_value_ratio: float,
+    prob_1plus: float,
+    risk_adjusted_roi_pct: float,
+    market_regime: str,
+) -> Dict[str, Any]:
+    fvr_score = max(0, min(60, fair_value_ratio / 1.10 * 60))
+    prob_score = max(0, min(20, prob_1plus / 0.50 * 20))
+    roi_score = max(0, min(20, (risk_adjusted_roi_pct + 25) / 35 * 20))
+
+    raw_score = fvr_score + prob_score + roi_score
+    score = round(max(0, min(100, raw_score)), 1)
+
+    if score >= 85:
+        action = "STRIKE_NOW"
+    elif score >= 70:
+        action = "STRONG_WATCH"
+    elif score >= 55:
+        action = "WATCH"
+    elif score >= 40:
+        action = "WEAK_WATCH"
+    else:
+        action = "WAIT"
+
+    return {
+        "score": score,
+        "action": action,
+        "components": {
+            "fvr_score": round(fvr_score, 1),
+            "prob_score": round(prob_score, 1),
+            "roi_score": round(roi_score, 1),
+            "market_regime": market_regime,
+        },
+    }
 
 def recommendation_from_tier(alert_tier: str) -> str:
     if alert_tier in {"STRONG_RENT", "DEPLOY_NOW"}:
@@ -1147,13 +1181,21 @@ def run_engine() -> Dict[str, Any]:
     trends = get_history_trends()
     market_regime = classify_market_regime(best.fair_value_ratio)
 
+    opportunity = calculate_opportunity_score(
+        fair_value_ratio=best.fair_value_ratio,
+        prob_1plus=best.prob_1plus,
+        risk_adjusted_roi_pct=best.risk_adjusted_roi_pct,
+        market_regime=market_regime,
+    )
+
     answer = (
         f"{best.recommendation}: best executable $200-$300 BCH strike is "
         f"{best.source.upper()} {best.name}, {best.hashrate_ph:.0f} PH/s for "
         f"{best.duration_hours:.2f}h, P1+={best.prob_1plus*100:.2f}%, "
         f"risk-adjusted ROI={best.risk_adjusted_roi_pct:.2f}%, "
-        f"FVR={best.fair_value_ratio:.3f}, tier={best.alert_tier}, "
-        f"regime={market_regime}."
+        f"FVR={best.fair_value_ratio:.3f}, regime={market_regime}, "
+        f"opportunity={opportunity['score']}/100, action={opportunity['action']}, "
+        f"tier={best.alert_tier}."
     )
 
     record = {
@@ -1181,6 +1223,7 @@ def run_engine() -> Dict[str, Any]:
         },
         "trends": trends,
         "market_regime": market_regime,
+        "opportunity": opportunity,
     }
 
     write_jsonl_log(LOG_PATH, record)
