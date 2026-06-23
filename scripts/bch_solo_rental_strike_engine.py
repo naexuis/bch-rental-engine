@@ -894,6 +894,133 @@ def write_latest_state(path: Path, record: Dict[str, Any]) -> None:
         json.dump(record, f, indent=2, default=str, sort_keys=True)
     tmp.replace(path)
 
+def init_history_db() -> None:
+    with sqlite3.connect(HISTORY_DB_PATH) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS run_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+
+                btc_usd REAL,
+                bch_usd REAL,
+                bch_btc REAL,
+                bch_difficulty REAL,
+                bch_network_hashrate_eh REAL,
+
+                best_source TEXT,
+                best_name TEXT,
+                best_hashrate_ph REAL,
+                best_duration_hours REAL,
+                best_cost_usd REAL,
+
+                best_prob_1plus REAL,
+                best_prob_2plus REAL,
+                best_expected_profit_usd REAL,
+                best_roi_pct REAL,
+                best_risk_adjusted_roi_pct REAL,
+
+                best_fair_value_ratio REAL,
+                best_premium_discount_pct REAL,
+                best_alert_tier TEXT,
+                best_recommendation TEXT,
+
+                braiins_price_btc_per_ph_day REAL,
+                best_mrr_price_btc_per_ph_day REAL,
+
+                scenario_count INTEGER,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.commit()
+
+
+def get_best_source_price(sources: List[HashSource], source_name: str) -> Optional[float]:
+    prices = [
+        s.price_btc_per_ph_day
+        for s in sources
+        if s.source == source_name and s.price_btc_per_ph_day > 0
+    ]
+    return min(prices) if prices else None
+
+
+def write_history_row(
+    market: MarketData,
+    sources: List[HashSource],
+    scenarios: List[StrikeScenario],
+    best: StrikeScenario,
+) -> None:
+    init_history_db()
+
+    braiins_price = get_best_source_price(sources, "braiins")
+    best_mrr_price = get_best_source_price(sources, "mrr")
+
+    with sqlite3.connect(HISTORY_DB_PATH) as conn:
+        conn.execute(
+            """
+            INSERT INTO run_history (
+                timestamp,
+                btc_usd,
+                bch_usd,
+                bch_btc,
+                bch_difficulty,
+                bch_network_hashrate_eh,
+
+                best_source,
+                best_name,
+                best_hashrate_ph,
+                best_duration_hours,
+                best_cost_usd,
+
+                best_prob_1plus,
+                best_prob_2plus,
+                best_expected_profit_usd,
+                best_roi_pct,
+                best_risk_adjusted_roi_pct,
+
+                best_fair_value_ratio,
+                best_premium_discount_pct,
+                best_alert_tier,
+                best_recommendation,
+
+                braiins_price_btc_per_ph_day,
+                best_mrr_price_btc_per_ph_day,
+
+                scenario_count
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                market.timestamp,
+                market.btc_usd,
+                market.bch_usd,
+                market.bch_btc,
+                market.bch_difficulty,
+                market.bch_network_hashrate_eh,
+
+                best.source,
+                best.name,
+                best.hashrate_ph,
+                best.duration_hours,
+                best.cost_usd,
+
+                best.prob_1plus,
+                best.prob_2plus,
+                best.expected_profit_usd,
+                best.roi_pct,
+                best.risk_adjusted_roi_pct,
+
+                best.fair_value_ratio,
+                best.premium_discount_pct,
+                best.alert_tier,
+                best.recommendation,
+
+                braiins_price,
+                best_mrr_price,
+
+                len(scenarios),
+            ),
+        )
+        conn.commit()
 
 def send_telegram_alert(message: str) -> bool:
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
@@ -929,6 +1056,13 @@ def run_engine() -> Dict[str, Any]:
 
     winners = select_winners(scenarios)
     best = winners["best_strike"]
+
+    write_history_row(
+        market=market,
+        sources=sources,
+        scenarios=scenarios,
+        best=best,
+    )
 
     cheapest_price = min(s.current_price_btc_per_ph_day for s in scenarios)
     probability_table = calculate_probability_table(market, cheapest_price)
