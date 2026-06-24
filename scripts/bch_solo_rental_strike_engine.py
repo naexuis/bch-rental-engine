@@ -1154,6 +1154,14 @@ def init_history_db() -> None:
                 best_alert_tier TEXT,
                 best_recommendation TEXT,
 
+                market_regime TEXT,
+                opportunity_score REAL,
+                opportunity_action TEXT,
+
+                budget_min_usd REAL,
+                budget_max_usd REAL,
+                budget_step_usd REAL,
+
                 braiins_price_btc_per_ph_day REAL,
                 best_mrr_price_btc_per_ph_day REAL,
 
@@ -1161,6 +1169,30 @@ def init_history_db() -> None:
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+        existing_cols = {
+            row[1]
+            for row in conn.execute(
+                "PRAGMA table_info(run_history)"
+            ).fetchall()
+        }
+
+        new_columns = {
+            "market_regime": "TEXT",
+            "opportunity_score": "REAL",
+            "opportunity_action": "TEXT",
+            "budget_min_usd": "REAL",
+            "budget_max_usd": "REAL",
+            "budget_step_usd": "REAL",
+        }
+
+        for col, col_type in new_columns.items():
+            if col not in existing_cols:
+                conn.execute(
+                    f"ALTER TABLE run_history "
+                    f"ADD COLUMN {col} {col_type}"
+                )
+
         conn.commit()
 
 
@@ -1178,6 +1210,8 @@ def write_history_row(
     sources: List[HashSource],
     scenarios: List[StrikeScenario],
     best: StrikeScenario,
+    market_regime: str,
+    opportunity: Dict[str, Any],
 ) -> None:
     init_history_db()
 
@@ -1212,12 +1246,20 @@ def write_history_row(
                 best_alert_tier,
                 best_recommendation,
 
+                market_regime,
+                opportunity_score,
+                opportunity_action,
+
+                budget_min_usd,
+                budget_max_usd,
+                budget_step_usd,
+
                 braiins_price_btc_per_ph_day,
                 best_mrr_price_btc_per_ph_day,
 
                 scenario_count
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 market.timestamp,
@@ -1243,6 +1285,14 @@ def write_history_row(
                 best.premium_discount_pct,
                 best.alert_tier,
                 best.recommendation,
+
+                market_regime,
+                opportunity.get("score"),
+                opportunity.get("action"),
+
+                BUDGET_MIN_USD,
+                BUDGET_MAX_USD,
+                BUDGET_STEP_USD,
 
                 braiins_price,
                 best_mrr_price,
@@ -1357,13 +1407,6 @@ def run_engine() -> Dict[str, Any]:
     budget_frontier = build_budget_frontier(scenarios)
     frontier_summary = summarize_budget_frontier(budget_frontier)
 
-    write_history_row(
-        market=market,
-        sources=sources,
-        scenarios=scenarios,
-        best=best,
-    )
-
     cheapest_price = min(s.current_price_btc_per_ph_day for s in scenarios)
     probability_table = calculate_probability_table(market, cheapest_price)
     trends = get_history_trends()
@@ -1375,6 +1418,15 @@ def run_engine() -> Dict[str, Any]:
         prob_1plus=best.prob_1plus,
         risk_adjusted_roi_pct=best.risk_adjusted_roi_pct,
         market_regime=market_regime,
+    )
+
+    write_history_row(
+        market=market,
+        sources=sources,
+        scenarios=scenarios,
+        best=best,
+        market_regime=market_regime,
+        opportunity=opportunity,
     )
 
     interpretation = build_interpretation_text(
