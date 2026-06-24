@@ -177,6 +177,10 @@ def fmt_usd(x: float) -> str:
     return f"${x:,.2f}"
 
 
+def fmt_budget_range() -> str:
+    return f"{fmt_usd(BUDGET_MIN_USD)}-{fmt_usd(BUDGET_MAX_USD)}"
+
+
 def fmt_pct(x: float) -> str:
     return f"{x * 100:.2f}%"
 
@@ -882,7 +886,7 @@ def build_alert_message(
 Timestamp: {market.timestamp}
 
 Question:
-Where should I deploy $200-$300 for the best short-window BCH solo attempt?
+Where should I deploy {fmt_budget_range()} for the best short-window BCH solo attempt?
 
 Decision:
 Tier: {best.alert_tier}
@@ -1201,7 +1205,7 @@ def run_engine() -> Dict[str, Any]:
     )
 
     answer = (
-        f"{best.recommendation}: best executable $200-$300 BCH strike is "
+        f"{best.recommendation}: best executable {fmt_budget_range()} BCH strike is "
         f"{best.source.upper()} {best.name}, {best.hashrate_ph:.0f} PH/s for "
         f"{best.duration_hours:.2f}h, P1+={best.prob_1plus*100:.2f}%, "
         f"risk-adjusted ROI={best.risk_adjusted_roi_pct:.2f}%, "
