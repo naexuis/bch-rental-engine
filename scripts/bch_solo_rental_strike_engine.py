@@ -246,12 +246,22 @@ def calculate_opportunity_score(
     risk_adjusted_roi_pct: float,
     market_regime: str,
 ) -> Dict[str, Any]:
-    fvr_score = max(0, min(60, fair_value_ratio / 1.10 * 60))
+    fvr_score = max(0, min(65, fair_value_ratio / 1.10 * 65))
     prob_score = max(0, min(20, prob_1plus / 0.50 * 20))
-    roi_score = max(0, min(20, (risk_adjusted_roi_pct + 25) / 35 * 20))
+    roi_score = max(0, min(15, (risk_adjusted_roi_pct + 25) / 35 * 15))
 
     raw_score = fvr_score + prob_score + roi_score
     score = round(max(0, min(100, raw_score)), 1)
+
+    # Hard caps so bad economics cannot look too attractive.
+    if fair_value_ratio < 0.85:
+        score = min(score, 39.0)
+    elif fair_value_ratio < 0.90:
+        score = min(score, 49.0)
+    elif risk_adjusted_roi_pct < -10:
+        score = min(score, 54.0)
+    elif risk_adjusted_roi_pct < 0:
+        score = min(score, 69.0)
 
     if score >= 85:
         action = "STRIKE_NOW"
@@ -272,6 +282,8 @@ def calculate_opportunity_score(
             "prob_score": round(prob_score, 1),
             "roi_score": round(roi_score, 1),
             "market_regime": market_regime,
+            "risk_adjusted_roi_pct": risk_adjusted_roi_pct,
+            "fair_value_ratio": fair_value_ratio,
         },
     }
 
