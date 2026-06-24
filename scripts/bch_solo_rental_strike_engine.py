@@ -1041,6 +1041,47 @@ def should_alert(best: StrikeScenario, force: bool = False) -> bool:
 
     return best.alert_tier in {"DEPLOY_NOW", "STRONG_RENT"}
 
+def build_interpretation_text(
+    best: StrikeScenario,
+    market_regime: str,
+    opportunity: Dict[str, Any],
+    frontier_summary: Dict[str, Any],
+) -> str:
+    prob_pct = best.prob_1plus * 100
+    fvr = best.fair_value_ratio
+    roi = best.risk_adjusted_roi_pct
+    action = opportunity.get("action", "UNKNOWN")
+
+    if prob_pct >= 70 and fvr < 0.90:
+        return (
+            "Probability is high at the larger budget range, but economics still are not good enough to rent. "
+            f"The engine estimates a {prob_pct:.2f}% chance of at least one block, but hashpower is still overpriced "
+            f"with FVR={fvr:.3f} and risk-adjusted ROI={roi:.2f}%. Recommended action: {action}."
+        )
+
+    if prob_pct >= 50 and fvr < 0.90:
+        return (
+            "The setup has a meaningful block probability, but the rental price is still too expensive relative to expected BCH value. "
+            f"P(1+) is {prob_pct:.2f}%, FVR={fvr:.3f}, and risk-adjusted ROI={roi:.2f}%. Recommended action: {action}."
+        )
+
+    if fvr >= 1.0 and roi >= 0:
+        return (
+            "Economics are favorable. Hashpower is priced at or below fair value, and expected return is positive. "
+            f"P(1+) is {prob_pct:.2f}%, FVR={fvr:.3f}, and risk-adjusted ROI={roi:.2f}%. Recommended action: {action}."
+        )
+
+    if 0.90 <= fvr < 1.0:
+        return (
+            "The market is close to fair value, but not attractive enough yet. "
+            f"P(1+) is {prob_pct:.2f}%, FVR={fvr:.3f}, and risk-adjusted ROI={roi:.2f}%. Recommended action: {action}."
+        )
+
+    return (
+        "The engine recommends waiting. Current hashpower pricing is not attractive enough relative to BCH reward economics. "
+        f"P(1+) is {prob_pct:.2f}%, FVR={fvr:.3f}, market regime is {market_regime}, "
+        f"and risk-adjusted ROI is {roi:.2f}%. Recommended action: {action}."
+    )
 
 # =============================================================================
 # LOGGING
@@ -1286,6 +1327,7 @@ def run_engine() -> Dict[str, Any]:
 
     winners = select_winners(scenarios)
     best = winners["best_strike"]
+
     budget_frontier = build_budget_frontier(scenarios)
     frontier_summary = summarize_budget_frontier(budget_frontier)
 
@@ -1299,6 +1341,7 @@ def run_engine() -> Dict[str, Any]:
     cheapest_price = min(s.current_price_btc_per_ph_day for s in scenarios)
     probability_table = calculate_probability_table(market, cheapest_price)
     trends = get_history_trends()
+
     market_regime = classify_market_regime(best.fair_value_ratio)
 
     opportunity = calculate_opportunity_score(
@@ -1306,6 +1349,13 @@ def run_engine() -> Dict[str, Any]:
         prob_1plus=best.prob_1plus,
         risk_adjusted_roi_pct=best.risk_adjusted_roi_pct,
         market_regime=market_regime,
+    )
+
+    interpretation = build_interpretation_text(
+        best=best,
+        market_regime=market_regime,
+        opportunity=opportunity,
+        frontier_summary=frontier_summary,
     )
 
     answer = (
@@ -1346,6 +1396,7 @@ def run_engine() -> Dict[str, Any]:
         "opportunity": opportunity,
         "budget_frontier": budget_frontier,
         "frontier_summary": frontier_summary,
+        "interpretation": interpretation,
     }
 
     write_jsonl_log(LOG_PATH, record)
@@ -1369,6 +1420,7 @@ def main() -> None:
 
         print("BCH Solo Rental Strike Engine completed.")
         print(result["answer"])
+        print(result.get("interpretation", ""))
         print(f"Telegram sent: {result['telegram_sent']}")
 
     except Exception as exc:
