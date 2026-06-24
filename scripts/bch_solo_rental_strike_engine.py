@@ -868,6 +868,62 @@ def build_budget_frontier(scenarios: List[StrikeScenario]) -> List[Dict[str, Any
 
     return frontier
 
+def summarize_budget_frontier(
+    budget_frontier: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    targets = [0.25, 0.50, 0.75, 0.90]
+
+    summary = {
+        "targets": {},
+        "best_probability_budget": None,
+        "lowest_budget": None,
+        "highest_budget": None,
+    }
+
+    if not budget_frontier:
+        return summary
+
+    summary["lowest_budget"] = budget_frontier[0]["budget_usd"]
+    summary["highest_budget"] = budget_frontier[-1]["budget_usd"]
+
+    best_row = max(
+        budget_frontier,
+        key=lambda r: r["best_probability"]["prob_1plus"],
+    )
+
+    summary["best_probability_budget"] = {
+        "budget_usd": best_row["budget_usd"],
+        "prob_1plus": best_row["best_probability"]["prob_1plus"],
+        "source": best_row["best_probability"]["source"],
+        "duration_hours": best_row["best_probability"]["duration_hours"],
+        "risk_adjusted_roi_pct": best_row["best_probability"]["risk_adjusted_roi_pct"],
+        "fair_value_ratio": best_row["best_probability"]["fair_value_ratio"],
+    }
+
+    for target in targets:
+        matching = [
+            row for row in budget_frontier
+            if row["best_probability"]["prob_1plus"] >= target
+        ]
+
+        if not matching:
+            summary["targets"][f"{int(target * 100)}pct"] = None
+            continue
+
+        row = min(matching, key=lambda r: r["budget_usd"])
+        bp = row["best_probability"]
+
+        summary["targets"][f"{int(target * 100)}pct"] = {
+            "budget_usd": row["budget_usd"],
+            "prob_1plus": bp["prob_1plus"],
+            "source": bp["source"],
+            "duration_hours": bp["duration_hours"],
+            "risk_adjusted_roi_pct": bp["risk_adjusted_roi_pct"],
+            "fair_value_ratio": bp["fair_value_ratio"],
+        }
+
+    return summary
+
 
 # =============================================================================
 # REPORTING
@@ -1231,6 +1287,7 @@ def run_engine() -> Dict[str, Any]:
     winners = select_winners(scenarios)
     best = winners["best_strike"]
     budget_frontier = build_budget_frontier(scenarios)
+    frontier_summary = summarize_budget_frontier(budget_frontier)
 
     write_history_row(
         market=market,
@@ -1288,6 +1345,7 @@ def run_engine() -> Dict[str, Any]:
         "market_regime": market_regime,
         "opportunity": opportunity,
         "budget_frontier": budget_frontier,
+        "frontier_summary": frontier_summary,
     }
 
     write_jsonl_log(LOG_PATH, record)
