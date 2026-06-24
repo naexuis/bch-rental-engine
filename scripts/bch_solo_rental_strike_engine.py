@@ -974,6 +974,10 @@ def build_alert_message(
     market: MarketData,
     winners: Dict[str, StrikeScenario],
     probability_table: List[Dict[str, Any]],
+    opportunity: Dict[str, Any],
+    market_regime: str,
+    frontier_summary: Dict[str, Any],
+    interpretation: str,
 ) -> str:
 
     best = winners["best_strike"]
@@ -981,6 +985,19 @@ def build_alert_message(
     prob_text = "\n".join(
         f"- {r['target_probability']:.0%}: {fmt_usd(r['required_usd'])}"
         for r in probability_table
+    )
+
+    frontier_text = "\n".join(
+        f"- {label}: "
+        + (
+            "not reachable"
+            if row is None
+            else f"{fmt_usd(row['budget_usd'])}, "
+                 f"P1+={fmt_pct(row['prob_1plus'])}, "
+                 f"{row['duration_hours']:.2f}h, "
+                 f"ROI={row['risk_adjusted_roi_pct']:.2f}%"
+        )
+        for label, row in frontier_summary.get("targets", {}).items()
     )
 
     return f"""BCH Solo Rental Strike Report
@@ -994,6 +1011,12 @@ Decision:
 Tier: {best.alert_tier}
 Recommendation: {best.recommendation}
 Strike Grade: {best.strike_grade}
+Market Regime: {market_regime}
+Opportunity Score: {opportunity['score']}/100
+Action: {opportunity['action']}
+
+Interpretation:
+{interpretation}
 
 Best Executable Strike:
 {scenario_line(best)}
@@ -1020,6 +1043,9 @@ Outcome Profit:
 0 blocks: {fmt_usd(best.profit_if_0_blocks)}
 1 block: {fmt_usd(best.profit_if_1_block)}
 2 blocks: {fmt_usd(best.profit_if_2_blocks)}
+
+Budget Frontier:
+{frontier_text}
 
 Winners:
 Best strike: {scenario_line(winners["best_strike"])}
@@ -1403,7 +1429,15 @@ def run_engine() -> Dict[str, Any]:
     write_latest_state(STATE_PATH, record)
 
     if record["should_alert"]:
-        message = build_alert_message(market, winners, probability_table)
+        message = build_alert_message(
+            market=market,
+            winners=winners,
+            probability_table=probability_table,
+            opportunity=opportunity,
+            market_regime=market_regime,
+            frontier_summary=frontier_summary,
+            interpretation=interpretation,
+        )
         sent = send_telegram_alert(message)
         record["telegram_sent"] = sent
         write_jsonl_log(ALERT_LOG_PATH, record)
