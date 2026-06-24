@@ -1387,6 +1387,46 @@ def send_telegram_alert(message: str) -> bool:
 
     return True
 
+def load_history(limit: int = 5000) -> List[Dict[str, Any]]:
+    init_history_db()
+
+    with sqlite3.connect(HISTORY_DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+
+        rows = conn.execute(
+            """
+            SELECT *
+            FROM run_history
+            ORDER BY timestamp ASC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+
+    return [dict(r) for r in rows]
+
+
+def load_history_df(limit: int = 5000):
+    import pandas as pd
+
+    rows = load_history(limit)
+
+    if not rows:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(rows)
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+
+    return df
+
+
+def test_history_loader() -> None:
+    df = load_history_df()
+
+    print(df.tail())
+    print()
+    print(df.columns.tolist())
+
 
 # =============================================================================
 # ENGINE
