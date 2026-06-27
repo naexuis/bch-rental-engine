@@ -359,6 +359,53 @@ def calculate_pool_network_share(
         rented_hashrate_ph + existing_pool_hashrate_ph
     ) / network_hashrate_ph
 
+def calculate_pool_routing_score(
+    rented_hashrate_ph: float,
+    pool_snapshot: PoolSnapshot,
+) -> Dict[str, Any]:
+    post_rental_pool_hashrate_ph = (
+        pool_snapshot.hashrate_ph + rented_hashrate_ph
+    )
+
+    dominance = calculate_pool_dominance(
+        rented_hashrate_ph=rented_hashrate_ph,
+        existing_pool_hashrate_ph=pool_snapshot.hashrate_ph,
+    )
+
+    network_share = calculate_pool_network_share(
+        rented_hashrate_ph=rented_hashrate_ph,
+        existing_pool_hashrate_ph=pool_snapshot.hashrate_ph,
+        network_hashrate_ph=pool_snapshot.network_hashrate_ph,
+    )
+
+    # First-pass routing score:
+    # - dominance is the main driver
+    # - lower fee is better
+    # - pool status must be ok
+    dominance_score = dominance * 70
+
+    fee_score = max(0.0, 20.0 - pool_snapshot.fee_pct * 4)
+
+    status_score = 10.0 if pool_snapshot.status == "ok" else 0.0
+
+    routing_score = min(
+        100.0,
+        dominance_score + fee_score + status_score,
+    )
+
+    return {
+        "pool_key": pool_snapshot.key,
+        "pool_name": pool_snapshot.name,
+        "rented_hashrate_ph": rented_hashrate_ph,
+        "existing_pool_hashrate_ph": pool_snapshot.hashrate_ph,
+        "post_rental_pool_hashrate_ph": post_rental_pool_hashrate_ph,
+        "pool_dominance_pct": dominance * 100,
+        "post_rental_network_share_pct": network_share * 100,
+        "fee_pct": pool_snapshot.fee_pct,
+        "routing_score": routing_score,
+        "status": pool_snapshot.status,
+    }
+
 # =============================================================================
 # TEST FUNCTION
 # =============================================================================
@@ -401,6 +448,22 @@ def test_molepool_adapter() -> None:
     snapshot = adapter.fetch_snapshot()
 
     print(snapshot)
+
+def test_molepool_routing_score() -> None:
+    from scripts.pools.molepool import MolepoolAdapter
+
+    pools = load_pool_config()
+    cfg = next(p for p in pools if p.get("key") == "molepool")
+
+    adapter = MolepoolAdapter(cfg)
+    snapshot = adapter.fetch_snapshot()
+
+    score = calculate_pool_routing_score(
+        rented_hashrate_ph=300.0,
+        pool_snapshot=snapshot,
+    )
+
+    print(json.dumps(score, indent=2))
 
 # =============================================================================
 # MARKET DATA
