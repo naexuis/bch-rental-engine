@@ -76,6 +76,8 @@ BRAIINS_AVAILABLE_PH = os.getenv("BRAIINS_AVAILABLE_PH")
 
 FORCE_TEST_ALERT = os.getenv("BCH_FORCE_TEST_ALERT", "false").lower() == "true"
 
+POOLS_CONFIG_PATH = Path(os.getenv("BCH_POOLS_CONFIG_PATH", "config/pools.json"))
+
 
 # =============================================================================
 # DATA MODELS
@@ -299,6 +301,36 @@ def recommendation_from_tier(alert_tier: str) -> str:
     if alert_tier == "WATCH_IMPROVING":
         return "WATCH"
     return "DO NOT RENT"
+
+
+def load_pool_config(path: Path = POOLS_CONFIG_PATH) -> List[Dict[str, Any]]:
+    if not path.exists():
+        return []
+
+    with open(path, "r", encoding="utf-8") as f:
+        pools = json.load(f)
+
+    return [
+        p for p in pools
+        if p.get("enabled", True)
+    ]
+
+# =============================================================================
+# TEST FUNCTION
+# =============================================================================
+
+def test_pool_config_loader() -> None:
+    pools = load_pool_config()
+
+    print(f"Loaded pools: {len(pools)}")
+
+    for p in pools:
+        print(
+            p.get("key"),
+            p.get("name"),
+            p.get("url"),
+            p.get("fee_pct"),
+        )
 
 
 # =============================================================================

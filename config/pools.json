@@ -1,0 +1,34 @@
+[
+  {
+    "name": "Molepool",
+    "key": "molepool",
+    "type": "solo",
+    "url": "https://bch.molepool.com",
+    "fee_pct": 1.5,
+    "enabled": true
+  },
+  {
+    "name": "2Miners",
+    "key": "2miners",
+    "type": "solo",
+    "url": "https://solo-bch.2miners.com",
+    "fee_pct": 1.5,
+    "enabled": true
+  },
+  {
+    "name": "Kryptex",
+    "key": "kryptex",
+    "type": "solo",
+    "url": "https://pool.kryptex.com/bch/pool-hashrate",
+    "fee_pct": 1.5,
+    "enabled": true
+  },
+  {
+    "name": "Mining Dutch",
+    "key": "mining_dutch",
+    "type": "solo",
+    "url": "https://www.mining-dutch.nl/pools/bitcoincashnode.php?page=dashboard",
+    "fee_pct": 0.5,
+    "enabled": true
+  }
+]
