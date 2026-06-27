@@ -1,6 +1,6 @@
 from pathlib import Path
 import sqlite3
-
+import json
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -53,6 +53,7 @@ page = st.sidebar.radio(
         "Dashboard",
         "Market",
         "Strike Analysis",
+        "Pool Routing",
         "History",
         "Settings",
     ],
@@ -251,6 +252,48 @@ elif page == "Strike Analysis":
     st.subheader("Best Duration Over Time")
     fig = px.line(df, x="timestamp", y="best_duration_hours")
     st.plotly_chart(fig, use_container_width=True)
+
+elif page == "Pool Routing":
+    st.subheader("Pool Routing")
+
+    state_path = Path.home() / "bch_rental_engine/state/bch_solo_rental_strike_engine.json"
+
+    if not state_path.exists():
+        st.warning("Latest engine state file not found yet.")
+        st.stop()
+
+    with state_path.open("r", encoding="utf-8") as f:
+        state = json.load(f)
+
+    recommended_pool = state.get("recommended_pool")
+    rankings = state.get("pool_routing", {}).get("rankings", [])
+
+    if not recommended_pool:
+        st.warning("No pool routing data available yet.")
+        st.stop()
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric("Recommended Pool", recommended_pool.get("pool_name", "N/A"))
+    col2.metric("Routing Score", f"{recommended_pool.get('routing_score', 0):.1f}/100")
+    col3.metric("Dominance", f"{recommended_pool.get('pool_dominance_pct', 0):.2f}%")
+    col4.metric("Existing Pool", f"{recommended_pool.get('existing_pool_hashrate_ph', 0):,.2f} PH/s")
+
+    st.subheader("Pool Rankings")
+
+    if rankings:
+        pool_df = pd.DataFrame(rankings)
+        st.dataframe(pool_df, use_container_width=True)
+
+        fig = px.bar(
+            pool_df,
+            x="pool_name",
+            y="routing_score",
+            text="routing_score",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("No pool rankings available.")
 
 elif page == "History":
     st.subheader("Historical Performance")
