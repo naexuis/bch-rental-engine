@@ -429,6 +429,37 @@ def rank_pool_routes(
         reverse=True,
     )
 
+def build_pool_rankings_for_strike(best: StrikeScenario) -> Dict[str, Any]:
+    from pools.molepool import MolepoolAdapter
+    from pools.two_miners import TwoMinersAdapter
+
+    pools = load_pool_config()
+
+    snapshots = []
+
+    for pool in pools:
+        key = pool.get("key")
+
+        try:
+            if key == "molepool":
+                snapshots.append(MolepoolAdapter(pool).fetch_snapshot())
+
+            elif key == "2miners":
+                snapshots.append(TwoMinersAdapter(pool).fetch_snapshot())
+
+        except Exception as exc:
+            print(f"Pool fetch failed for {key}: {exc}")
+
+    rankings = rank_pool_routes(
+        pool_snapshots=snapshots,
+        rented_hashrate_ph=best.hashrate_ph,
+    )
+
+    return {
+        "rankings": rankings,
+        "recommended_pool": rankings[0] if rankings else None,
+    }
+
 # =============================================================================
 # TEST FUNCTION
 # =============================================================================
@@ -451,7 +482,7 @@ def test_pool_math():
     print("Network Share:", share)
 
 def test_pool_adapters() -> None:
-    from scripts.pools import get_pool_adapter
+    from pools import get_pool_adapter
 
     pools = load_pool_config()
 
@@ -462,7 +493,7 @@ def test_pool_adapters() -> None:
         print(pool.get("key"), type(adapter).__name__)
 
 def test_molepool_adapter() -> None:
-    from scripts.pools.molepool import MolepoolAdapter
+    from pools.molepool import MolepoolAdapter
 
     pools = load_pool_config()
     cfg = next(p for p in pools if p.get("key") == "molepool")
@@ -473,7 +504,7 @@ def test_molepool_adapter() -> None:
     print(snapshot)
 
 def test_molepool_routing_score() -> None:
-    from scripts.pools.molepool import MolepoolAdapter
+    from pools.molepool import MolepoolAdapter
 
     pools = load_pool_config()
     cfg = next(p for p in pools if p.get("key") == "molepool")
@@ -489,7 +520,7 @@ def test_molepool_routing_score() -> None:
     print(json.dumps(score, indent=2))
 
 def test_pool_ranking_engine() -> None:
-    from scripts.pools.molepool import MolepoolAdapter
+    from pools.molepool import MolepoolAdapter
 
     pools = load_pool_config()
     cfg = next(p for p in pools if p.get("key") == "molepool")
@@ -505,7 +536,7 @@ def test_pool_ranking_engine() -> None:
     print(json.dumps(rankings, indent=2))
 
 def test_two_miners_adapter() -> None:
-    from scripts.pools.two_miners import TwoMinersAdapter
+    from pools.two_miners import TwoMinersAdapter
 
     pools = load_pool_config()
     cfg = next(p for p in pools if p.get("key") == "2miners")
@@ -516,8 +547,8 @@ def test_two_miners_adapter() -> None:
     print(snapshot)
 
 def test_two_pool_ranking_engine() -> None:
-    from scripts.pools.molepool import MolepoolAdapter
-    from scripts.pools.two_miners import TwoMinersAdapter
+    from pools.molepool import MolepoolAdapter
+    from pools.two_miners import TwoMinersAdapter
 
     pools = load_pool_config()
 
@@ -1648,6 +1679,8 @@ def run_engine() -> Dict[str, Any]:
 
     market_regime = classify_market_regime(best.fair_value_ratio)
 
+    pool_routing = build_pool_rankings_for_strike(best)
+
     opportunity = calculate_opportunity_score(
         fair_value_ratio=best.fair_value_ratio,
         prob_1plus=best.prob_1plus,
@@ -1688,6 +1721,8 @@ def run_engine() -> Dict[str, Any]:
         "sources": [asdict(s) for s in sources],
         "scenario_count": len(scenarios),
         "winners": {k: asdict(v) if v is not None else None for k, v in winners.items()},
+        "pool_routing": pool_routing,
+        "recommended_pool": pool_routing.get("recommended_pool"),
         "probability_table": probability_table,
         "recommendation": best.recommendation,
         "alert_tier": best.alert_tier,
