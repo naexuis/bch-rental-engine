@@ -4,6 +4,7 @@ import sqlite3
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 
 
 st.set_page_config(
@@ -58,11 +59,40 @@ page = st.sidebar.radio(
     key="main_navigation",
 )
 
+st.sidebar.divider()
+
+auto_refresh = st.sidebar.checkbox("Auto refresh", value=True)
+
+refresh_seconds = st.sidebar.number_input(
+    "Refresh every seconds",
+    min_value=10,
+    max_value=3600,
+    value=60,
+    step=10,
+)
+
+if auto_refresh:
+    st_autorefresh(
+        interval=refresh_seconds * 1000,
+        key="dashboard_autorefresh",
+    )
+
+if st.sidebar.button("Refresh now"):
+    st.cache_data.clear()
+    st.rerun()
+
 if df.empty:
     st.warning("No history data found yet.")
     st.stop()
 
 latest = df.iloc[-1]
+
+last_updated = latest["timestamp"]
+history_rows = len(df)
+
+status_col1, status_col2 = st.columns(2)
+status_col1.caption(f"Last Updated: {last_updated}")
+status_col2.caption(f"History Rows: {history_rows}")
 
 fvr = safe_num(latest.get("best_fair_value_ratio", 0))
 risk_roi = safe_num(latest.get("best_risk_adjusted_roi_pct", 0))
