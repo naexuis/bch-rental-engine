@@ -141,6 +141,26 @@ class StrikeScenario:
     recommendation: str
     strike_type: str
 
+@dataclass
+class PoolSnapshot:
+    name: str
+    key: str
+
+    timestamp: str
+
+    hashrate_ph: float
+    miners: Optional[int]
+
+    fee_pct: float
+
+    effort_pct: Optional[float]
+    last_block_minutes: Optional[float]
+
+    network_hashrate_ph: float
+
+    status: str
+
+    url: str
 
 # =============================================================================
 # HELPERS
@@ -315,22 +335,51 @@ def load_pool_config(path: Path = POOLS_CONFIG_PATH) -> List[Dict[str, Any]]:
         if p.get("enabled", True)
     ]
 
+def calculate_pool_dominance(
+    rented_hashrate_ph: float,
+    existing_pool_hashrate_ph: float,
+) -> float:
+    total = rented_hashrate_ph + existing_pool_hashrate_ph
+
+    if total <= 0:
+        return 0.0
+
+    return rented_hashrate_ph / total
+
+def calculate_pool_network_share(
+    rented_hashrate_ph: float,
+    existing_pool_hashrate_ph: float,
+    network_hashrate_ph: float,
+) -> float:
+
+    if network_hashrate_ph <= 0:
+        return 0.0
+
+    return (
+        rented_hashrate_ph + existing_pool_hashrate_ph
+    ) / network_hashrate_ph
+
 # =============================================================================
 # TEST FUNCTION
 # =============================================================================
 
-def test_pool_config_loader() -> None:
-    pools = load_pool_config()
+def test_pool_math():
 
-    print(f"Loaded pools: {len(pools)}")
+    dominance = calculate_pool_dominance(
+        rented_hashrate_ph=300,
+        existing_pool_hashrate_ph=47,
+    )
 
-    for p in pools:
-        print(
-            p.get("key"),
-            p.get("name"),
-            p.get("url"),
-            p.get("fee_pct"),
-        )
+    print("Dominance:", dominance)
+
+    share = calculate_pool_network_share(
+        rented_hashrate_ph=300,
+        existing_pool_hashrate_ph=47,
+        network_hashrate_ph=3810,
+    )
+
+    print("Network Share:", share)
+
 
 
 # =============================================================================
