@@ -150,6 +150,47 @@ Probability is high, but the engine still does not like the economics.
     for reason in reasons:
         st.write(reason)
 
+    st.subheader("Current Blockers")
+
+    blockers = []
+
+    if fvr < 0.90:
+        blockers.append("Rental pricing is still too expensive versus estimated fair value.")
+
+    if risk_roi < 0:
+        blockers.append("Risk-adjusted ROI is still negative.")
+
+    if prob_1plus < 0.70:
+        blockers.append("Probability is not high enough at the current budget range.")
+
+    if not blockers:
+        st.success("No major blockers detected.")
+    else:
+        for blocker in blockers:
+            st.error(blocker)
+
+    st.subheader("Conditions Needed")
+
+    cond1, cond2, cond3 = st.columns(3)
+
+    cond1.metric(
+        "FVR Target",
+        ">= 0.90",
+        f"Current: {fvr:.3f}",
+    )
+
+    cond2.metric(
+        "Risk ROI Target",
+        ">= 0%",
+        f"Current: {risk_roi:.2f}%",
+    )
+
+    cond3.metric(
+        "Probability Target",
+        ">= 70%",
+        f"Current: {prob_1plus * 100:.2f}%",
+    )
+
     st.subheader("Current Strike")
 
     strike_col1, strike_col2, strike_col3, strike_col4 = st.columns(4)
@@ -164,18 +205,6 @@ Probability is high, but the engine still does not like the economics.
     strike_col5.metric("FVR", f"{fvr:.3f}")
     strike_col6.metric("Risk ROI", f"{risk_roi:.2f}%")
     strike_col7.metric("Expected Profit", f"${latest.get('best_expected_profit_usd', 0):,.2f}")
-
-    st.subheader("Opportunity Score Over Time")
-    fig = px.line(df, x="timestamp", y="opportunity_score")
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.subheader("Fair Value Ratio Over Time")
-    fig = px.line(df, x="timestamp", y="best_fair_value_ratio")
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.subheader("P(1+ Block) Over Time")
-    fig = px.line(df, x="timestamp", y="best_prob_1plus")
-    st.plotly_chart(fig, use_container_width=True)
 
 elif page == "Market":
     st.subheader("Market Overview")
