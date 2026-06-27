@@ -504,6 +504,38 @@ def test_pool_ranking_engine() -> None:
 
     print(json.dumps(rankings, indent=2))
 
+def test_two_miners_adapter() -> None:
+    from scripts.pools.two_miners import TwoMinersAdapter
+
+    pools = load_pool_config()
+    cfg = next(p for p in pools if p.get("key") == "2miners")
+
+    adapter = TwoMinersAdapter(cfg)
+    snapshot = adapter.fetch_snapshot()
+
+    print(snapshot)
+
+def test_two_pool_ranking_engine() -> None:
+    from scripts.pools.molepool import MolepoolAdapter
+    from scripts.pools.two_miners import TwoMinersAdapter
+
+    pools = load_pool_config()
+
+    mole_cfg = next(p for p in pools if p.get("key") == "molepool")
+    two_cfg = next(p for p in pools if p.get("key") == "2miners")
+
+    snapshots = [
+        MolepoolAdapter(mole_cfg).fetch_snapshot(),
+        TwoMinersAdapter(two_cfg).fetch_snapshot(),
+    ]
+
+    rankings = rank_pool_routes(
+        pool_snapshots=snapshots,
+        rented_hashrate_ph=300.0,
+    )
+
+    print(json.dumps(rankings, indent=2))
+
 # =============================================================================
 # MARKET DATA
 # =============================================================================
