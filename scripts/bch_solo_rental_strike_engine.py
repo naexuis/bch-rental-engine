@@ -76,6 +76,8 @@ BRAIINS_AVAILABLE_PH = os.getenv("BRAIINS_AVAILABLE_PH")
 
 FORCE_TEST_ALERT = os.getenv("BCH_FORCE_TEST_ALERT", "false").lower() == "true"
 
+POOLS_CONFIG_PATH = Path(os.getenv("BCH_POOLS_CONFIG_PATH", "config/pools.json"))
+
 
 # =============================================================================
 # DATA MODELS
@@ -139,6 +141,26 @@ class StrikeScenario:
     recommendation: str
     strike_type: str
 
+@dataclass
+class PoolSnapshot:
+    name: str
+    key: str
+
+    timestamp: str
+
+    hashrate_ph: float
+    miners: Optional[int]
+
+    fee_pct: float
+
+    effort_pct: Optional[float]
+    last_block_minutes: Optional[float]
+
+    network_hashrate_ph: float
+
+    status: str
+
+    url: str
 
 # =============================================================================
 # HELPERS
@@ -300,6 +322,250 @@ def recommendation_from_tier(alert_tier: str) -> str:
         return "WATCH"
     return "DO NOT RENT"
 
+
+def load_pool_config(path: Path = POOLS_CONFIG_PATH) -> List[Dict[str, Any]]:
+    if not path.exists():
+        return []
+
+    with open(path, "r", encoding="utf-8") as f:
+        pools = json.load(f)
+
+    return [
+        p for p in pools
+        if p.get("enabled", True)
+    ]
+
+def calculate_pool_dominance(
+    rented_hashrate_ph: float,
+    existing_pool_hashrate_ph: float,
+) -> float:
+    total = rented_hashrate_ph + existing_pool_hashrate_ph
+
+    if total <= 0:
+        return 0.0
+
+    return rented_hashrate_ph / total
+
+def calculate_pool_network_share(
+    rented_hashrate_ph: float,
+    existing_pool_hashrate_ph: float,
+    network_hashrate_ph: float,
+) -> float:
+
+    if network_hashrate_ph <= 0:
+        return 0.0
+
+    return (
+        rented_hashrate_ph + existing_pool_hashrate_ph
+    ) / network_hashrate_ph
+
+def calculate_pool_routing_score(
+    rented_hashrate_ph: float,
+    pool_snapshot: PoolSnapshot,
+) -> Dict[str, Any]:
+    post_rental_pool_hashrate_ph = (
+        pool_snapshot.hashrate_ph + rented_hashrate_ph
+    )
+
+    dominance = calculate_pool_dominance(
+        rented_hashrate_ph=rented_hashrate_ph,
+        existing_pool_hashrate_ph=pool_snapshot.hashrate_ph,
+    )
+
+    network_share = calculate_pool_network_share(
+        rented_hashrate_ph=rented_hashrate_ph,
+        existing_pool_hashrate_ph=pool_snapshot.hashrate_ph,
+        network_hashrate_ph=pool_snapshot.network_hashrate_ph,
+    )
+
+    # First-pass routing score:
+    # - dominance is the main driver
+    # - lower fee is better
+    # - pool status must be ok
+    dominance_score = dominance * 70
+
+    fee_score = max(0.0, 20.0 - pool_snapshot.fee_pct * 4)
+
+    status_score = 10.0 if pool_snapshot.status == "ok" else 0.0
+
+    routing_score = min(
+        100.0,
+        dominance_score + fee_score + status_score,
+    )
+
+    return {
+        "pool_key": pool_snapshot.key,
+        "pool_name": pool_snapshot.name,
+        "rented_hashrate_ph": rented_hashrate_ph,
+        "existing_pool_hashrate_ph": pool_snapshot.hashrate_ph,
+        "post_rental_pool_hashrate_ph": post_rental_pool_hashrate_ph,
+        "pool_dominance_pct": dominance * 100,
+        "post_rental_network_share_pct": network_share * 100,
+        "fee_pct": pool_snapshot.fee_pct,
+        "routing_score": routing_score,
+        "status": pool_snapshot.status,
+    }
+
+def rank_pool_routes(
+    pool_snapshots: List[PoolSnapshot],
+    rented_hashrate_ph: float,
+) -> List[Dict[str, Any]]:
+    rankings = []
+
+    for snapshot in pool_snapshots:
+        if snapshot.status != "ok":
+            continue
+
+        score = calculate_pool_routing_score(
+            rented_hashrate_ph=rented_hashrate_ph,
+            pool_snapshot=snapshot,
+        )
+
+        rankings.append(score)
+
+    return sorted(
+        rankings,
+        key=lambda r: r["routing_score"],
+        reverse=True,
+    )
+
+def build_pool_rankings_for_strike(best: StrikeScenario) -> Dict[str, Any]:
+    from pools.molepool import MolepoolAdapter
+    from pools.two_miners import TwoMinersAdapter
+
+    pools = load_pool_config()
+
+    snapshots = []
+
+    for pool in pools:
+        key = pool.get("key")
+
+        try:
+            if key == "molepool":
+                snapshots.append(MolepoolAdapter(pool).fetch_snapshot())
+
+            elif key == "2miners":
+                snapshots.append(TwoMinersAdapter(pool).fetch_snapshot())
+
+        except Exception as exc:
+            print(f"Pool fetch failed for {key}: {exc}")
+
+    rankings = rank_pool_routes(
+        pool_snapshots=snapshots,
+        rented_hashrate_ph=best.hashrate_ph,
+    )
+
+    return {
+        "rankings": rankings,
+        "recommended_pool": rankings[0] if rankings else None,
+    }
+
+# =============================================================================
+# TEST FUNCTION
+# =============================================================================
+
+def test_pool_math():
+
+    dominance = calculate_pool_dominance(
+        rented_hashrate_ph=300,
+        existing_pool_hashrate_ph=47,
+    )
+
+    print("Dominance:", dominance)
+
+    share = calculate_pool_network_share(
+        rented_hashrate_ph=300,
+        existing_pool_hashrate_ph=47,
+        network_hashrate_ph=3810,
+    )
+
+    print("Network Share:", share)
+
+def test_pool_adapters() -> None:
+    from pools import get_pool_adapter
+
+    pools = load_pool_config()
+
+    print(f"Loaded pools: {len(pools)}")
+
+    for pool in pools:
+        adapter = get_pool_adapter(pool)
+        print(pool.get("key"), type(adapter).__name__)
+
+def test_molepool_adapter() -> None:
+    from pools.molepool import MolepoolAdapter
+
+    pools = load_pool_config()
+    cfg = next(p for p in pools if p.get("key") == "molepool")
+
+    adapter = MolepoolAdapter(cfg)
+    snapshot = adapter.fetch_snapshot()
+
+    print(snapshot)
+
+def test_molepool_routing_score() -> None:
+    from pools.molepool import MolepoolAdapter
+
+    pools = load_pool_config()
+    cfg = next(p for p in pools if p.get("key") == "molepool")
+
+    adapter = MolepoolAdapter(cfg)
+    snapshot = adapter.fetch_snapshot()
+
+    score = calculate_pool_routing_score(
+        rented_hashrate_ph=300.0,
+        pool_snapshot=snapshot,
+    )
+
+    print(json.dumps(score, indent=2))
+
+def test_pool_ranking_engine() -> None:
+    from pools.molepool import MolepoolAdapter
+
+    pools = load_pool_config()
+    cfg = next(p for p in pools if p.get("key") == "molepool")
+
+    adapter = MolepoolAdapter(cfg)
+    snapshot = adapter.fetch_snapshot()
+
+    rankings = rank_pool_routes(
+        pool_snapshots=[snapshot],
+        rented_hashrate_ph=300.0,
+    )
+
+    print(json.dumps(rankings, indent=2))
+
+def test_two_miners_adapter() -> None:
+    from pools.two_miners import TwoMinersAdapter
+
+    pools = load_pool_config()
+    cfg = next(p for p in pools if p.get("key") == "2miners")
+
+    adapter = TwoMinersAdapter(cfg)
+    snapshot = adapter.fetch_snapshot()
+
+    print(snapshot)
+
+def test_two_pool_ranking_engine() -> None:
+    from pools.molepool import MolepoolAdapter
+    from pools.two_miners import TwoMinersAdapter
+
+    pools = load_pool_config()
+
+    mole_cfg = next(p for p in pools if p.get("key") == "molepool")
+    two_cfg = next(p for p in pools if p.get("key") == "2miners")
+
+    snapshots = [
+        MolepoolAdapter(mole_cfg).fetch_snapshot(),
+        TwoMinersAdapter(two_cfg).fetch_snapshot(),
+    ]
+
+    rankings = rank_pool_routes(
+        pool_snapshots=snapshots,
+        rented_hashrate_ph=300.0,
+    )
+
+    print(json.dumps(rankings, indent=2))
 
 # =============================================================================
 # MARKET DATA
@@ -1413,6 +1679,8 @@ def run_engine() -> Dict[str, Any]:
 
     market_regime = classify_market_regime(best.fair_value_ratio)
 
+    pool_routing = build_pool_rankings_for_strike(best)
+
     opportunity = calculate_opportunity_score(
         fair_value_ratio=best.fair_value_ratio,
         prob_1plus=best.prob_1plus,
@@ -1453,6 +1721,8 @@ def run_engine() -> Dict[str, Any]:
         "sources": [asdict(s) for s in sources],
         "scenario_count": len(scenarios),
         "winners": {k: asdict(v) if v is not None else None for k, v in winners.items()},
+        "pool_routing": pool_routing,
+        "recommended_pool": pool_routing.get("recommended_pool"),
         "probability_table": probability_table,
         "recommendation": best.recommendation,
         "alert_tier": best.alert_tier,
