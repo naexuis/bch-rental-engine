@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 import requests
 
 from .base import PoolAdapter
-from scripts.bch_solo_rental_strike_engine import PoolSnapshot
+from bch_solo_rental_strike_engine import PoolSnapshot
 
 
 HASHES_PER_PH = 1e15
