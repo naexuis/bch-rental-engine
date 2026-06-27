@@ -406,6 +406,29 @@ def calculate_pool_routing_score(
         "status": pool_snapshot.status,
     }
 
+def rank_pool_routes(
+    pool_snapshots: List[PoolSnapshot],
+    rented_hashrate_ph: float,
+) -> List[Dict[str, Any]]:
+    rankings = []
+
+    for snapshot in pool_snapshots:
+        if snapshot.status != "ok":
+            continue
+
+        score = calculate_pool_routing_score(
+            rented_hashrate_ph=rented_hashrate_ph,
+            pool_snapshot=snapshot,
+        )
+
+        rankings.append(score)
+
+    return sorted(
+        rankings,
+        key=lambda r: r["routing_score"],
+        reverse=True,
+    )
+
 # =============================================================================
 # TEST FUNCTION
 # =============================================================================
@@ -464,6 +487,22 @@ def test_molepool_routing_score() -> None:
     )
 
     print(json.dumps(score, indent=2))
+
+def test_pool_ranking_engine() -> None:
+    from scripts.pools.molepool import MolepoolAdapter
+
+    pools = load_pool_config()
+    cfg = next(p for p in pools if p.get("key") == "molepool")
+
+    adapter = MolepoolAdapter(cfg)
+    snapshot = adapter.fetch_snapshot()
+
+    rankings = rank_pool_routes(
+        pool_snapshots=[snapshot],
+        rented_hashrate_ph=300.0,
+    )
+
+    print(json.dumps(rankings, indent=2))
 
 # =============================================================================
 # MARKET DATA
