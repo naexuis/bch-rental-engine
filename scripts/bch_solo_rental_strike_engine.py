@@ -391,6 +391,17 @@ def test_pool_adapters() -> None:
         adapter = get_pool_adapter(pool)
         print(pool.get("key"), type(adapter).__name__)
 
+def test_molepool_adapter() -> None:
+    from scripts.pools.molepool import MolepoolAdapter
+
+    pools = load_pool_config()
+    cfg = next(p for p in pools if p.get("key") == "molepool")
+
+    adapter = MolepoolAdapter(cfg)
+    snapshot = adapter.fetch_snapshot()
+
+    print(snapshot)
+
 # =============================================================================
 # MARKET DATA
 # =============================================================================
