@@ -380,7 +380,16 @@ def test_pool_math():
 
     print("Network Share:", share)
 
+def test_pool_adapters() -> None:
+    from scripts.pools import get_pool_adapter
 
+    pools = load_pool_config()
+
+    print(f"Loaded pools: {len(pools)}")
+
+    for pool in pools:
+        adapter = get_pool_adapter(pool)
+        print(pool.get("key"), type(adapter).__name__)
 
 # =============================================================================
 # MARKET DATA
