@@ -37,6 +37,16 @@ def fmt_hashrate_from_ph(value_ph):
     value_mh = value_gh * 1_000
     return f"{value_mh:,.2f} MH/s"
 
+def render_decision_status(action: str):
+    action = str(action or "WAIT").upper()
+
+    if action in ["RENT", "STRONG_RENT"]:
+        st.success("🟢 RENT")
+    elif action in ["WATCH", "WEAK_WATCH", "MONITOR"]:
+        st.warning("🟡 WATCH")
+    else:
+        st.error("🔴 WAIT")
+
 
 @st.cache_data(ttl=60)
 def load_history() -> pd.DataFrame:
@@ -119,10 +129,11 @@ opportunity_score = safe_num(latest.get("opportunity_score", 0))
 
 market_regime = latest.get("market_regime", "N/A")
 recommendation = latest.get("best_recommendation", "N/A")
-action = latest.get("opportunity_action", "N/A")
+action = str(latest.get("opportunity_action", "WAIT")).upper()
 
 if page == "Dashboard":
     st.subheader("Current Decision")
+    render_decision_status(action)
 
     decision_col1, decision_col2 = st.columns([2, 1])
 
@@ -272,6 +283,7 @@ elif page == "Strike Analysis":
 
 elif page == "Pool Routing":
     st.subheader("Pool Routing")
+    render_decision_status(action)
 
     state_path = Path.home() / "bch_rental_engine/state/bch_solo_rental_strike_engine.json"
 
