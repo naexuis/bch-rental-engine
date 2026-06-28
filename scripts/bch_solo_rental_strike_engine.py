@@ -432,6 +432,7 @@ def rank_pool_routes(
 def build_pool_rankings_for_strike(best: StrikeScenario) -> Dict[str, Any]:
     from pools.molepool import MolepoolAdapter
     from pools.two_miners import TwoMinersAdapter
+    from pools.kryptex import KryptexAdapter
 
     pools = load_pool_config()
 
@@ -446,6 +447,9 @@ def build_pool_rankings_for_strike(best: StrikeScenario) -> Dict[str, Any]:
 
             elif key == "2miners":
                 snapshots.append(TwoMinersAdapter(pool).fetch_snapshot())
+
+            elif key == "kryptex":
+                snapshots.append(KryptexAdapter(pool).fetch_snapshot())
 
         except Exception as exc:
             print(f"Pool fetch failed for {key}: {exc}")
@@ -546,18 +550,21 @@ def test_two_miners_adapter() -> None:
 
     print(snapshot)
 
-def test_two_pool_ranking_engine() -> None:
-    from pools.molepool import MolepoolAdapter
-    from pools.two_miners import TwoMinersAdapter
+def test_multi_pool_ranking_engine() -> None:
+    from scripts.pools.molepool import MolepoolAdapter
+    from scripts.pools.two_miners import TwoMinersAdapter
+    from scripts.pools.kryptex import KryptexAdapter
 
     pools = load_pool_config()
 
     mole_cfg = next(p for p in pools if p.get("key") == "molepool")
     two_cfg = next(p for p in pools if p.get("key") == "2miners")
+    kryptex_cfg = next(p for p in pools if p.get("key") == "kryptex")
 
     snapshots = [
         MolepoolAdapter(mole_cfg).fetch_snapshot(),
         TwoMinersAdapter(two_cfg).fetch_snapshot(),
+        KryptexAdapter(kryptex_cfg).fetch_snapshot(),
     ]
 
     rankings = rank_pool_routes(
@@ -566,6 +573,17 @@ def test_two_pool_ranking_engine() -> None:
     )
 
     print(json.dumps(rankings, indent=2))
+
+def test_kryptex_adapter() -> None:
+    from scripts.pools.kryptex import KryptexAdapter
+
+    pools = load_pool_config()
+    cfg = next(p for p in pools if p.get("key") == "kryptex")
+
+    adapter = KryptexAdapter(cfg)
+    snapshot = adapter.fetch_snapshot()
+
+    print(snapshot)
 
 # =============================================================================
 # MARKET DATA
