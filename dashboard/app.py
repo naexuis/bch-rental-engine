@@ -20,6 +20,23 @@ def safe_num(value, default=0.0):
         return default
     return value
 
+def fmt_hashrate_from_ph(value_ph):
+    value_ph = safe_num(value_ph)
+
+    if value_ph >= 1:
+        return f"{value_ph:,.2f} PH/s"
+
+    value_th = value_ph * 1_000
+    if value_th >= 1:
+        return f"{value_th:,.2f} TH/s"
+
+    value_gh = value_th * 1_000
+    if value_gh >= 1:
+        return f"{value_gh:,.2f} GH/s"
+
+    value_mh = value_gh * 1_000
+    return f"{value_mh:,.2f} MH/s"
+
 
 @st.cache_data(ttl=60)
 def load_history() -> pd.DataFrame:
@@ -277,13 +294,40 @@ elif page == "Pool Routing":
     col1.metric("Recommended Pool", recommended_pool.get("pool_name", "N/A"))
     col2.metric("Routing Score", f"{recommended_pool.get('routing_score', 0):.1f}/100")
     col3.metric("Dominance", f"{recommended_pool.get('pool_dominance_pct', 0):.2f}%")
-    col4.metric("Existing Pool", f"{recommended_pool.get('existing_pool_hashrate_ph', 0):,.2f} PH/s")
+    col4.metric(
+    "Existing Pool",
+    fmt_hashrate_from_ph(recommended_pool.get("existing_pool_hashrate_ph", 0)),
+    )
 
     st.subheader("Pool Rankings")
 
     if rankings:
         pool_df = pd.DataFrame(rankings)
-        st.dataframe(pool_df, use_container_width=True)
+
+        display_df = pool_df.copy()
+
+        display_df["existing_pool"] = display_df["existing_pool_hashrate_ph"].apply(fmt_hashrate_from_ph)
+        display_df["post_rental_pool"] = display_df["post_rental_pool_hashrate_ph"].apply(fmt_hashrate_from_ph)
+
+        display_df["routing_score"] = display_df["routing_score"].round(1)
+        display_df["pool_dominance_pct"] = display_df["pool_dominance_pct"].round(2)
+        display_df["post_rental_network_share_pct"] = display_df["post_rental_network_share_pct"].round(2)
+        display_df["fee_pct"] = display_df["fee_pct"].round(2)
+
+        display_df = display_df[
+            [
+                "pool_name",
+                "routing_score",
+                "pool_dominance_pct",
+                "existing_pool",
+                "post_rental_pool",
+                "post_rental_network_share_pct",
+                "fee_pct",
+                "status",
+            ]
+        ]
+
+        st.dataframe(display_df, use_container_width=True)
 
         fig = px.bar(
             pool_df,
