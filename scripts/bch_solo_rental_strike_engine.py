@@ -362,6 +362,7 @@ def calculate_pool_network_share(
 def calculate_pool_routing_score(
     rented_hashrate_ph: float,
     pool_snapshot: PoolSnapshot,
+    network_hashrate_ph: float,
 ) -> Dict[str, Any]:
     post_rental_pool_hashrate_ph = (
         pool_snapshot.hashrate_ph + rented_hashrate_ph
@@ -375,7 +376,7 @@ def calculate_pool_routing_score(
     network_share = calculate_pool_network_share(
         rented_hashrate_ph=rented_hashrate_ph,
         existing_pool_hashrate_ph=pool_snapshot.hashrate_ph,
-        network_hashrate_ph=pool_snapshot.network_hashrate_ph,
+        network_hashrate_ph=network_hashrate_ph,
     )
 
     # First-pass routing score:
@@ -409,6 +410,7 @@ def calculate_pool_routing_score(
 def rank_pool_routes(
     pool_snapshots: List[PoolSnapshot],
     rented_hashrate_ph: float,
+    network_hashrate_ph: float,
 ) -> List[Dict[str, Any]]:
     rankings = []
 
@@ -419,6 +421,7 @@ def rank_pool_routes(
         score = calculate_pool_routing_score(
             rented_hashrate_ph=rented_hashrate_ph,
             pool_snapshot=snapshot,
+            network_hashrate_ph=network_hashrate_ph,
         )
 
         rankings.append(score)
@@ -429,9 +432,14 @@ def rank_pool_routes(
         reverse=True,
     )
 
-def build_pool_rankings_for_strike(best: StrikeScenario) -> Dict[str, Any]:
+def build_pool_rankings_for_strike(
+    best: StrikeScenario,
+    market: MarketData,
+) -> Dict[str, Any]:
     from pools.molepool import MolepoolAdapter
     from pools.two_miners import TwoMinersAdapter
+    from pools.kryptex import KryptexAdapter
+    from pools.mining_dutch import MiningDutchAdapter
 
     pools = load_pool_config()
 
@@ -447,12 +455,19 @@ def build_pool_rankings_for_strike(best: StrikeScenario) -> Dict[str, Any]:
             elif key == "2miners":
                 snapshots.append(TwoMinersAdapter(pool).fetch_snapshot())
 
+            elif key == "kryptex":
+                snapshots.append(KryptexAdapter(pool).fetch_snapshot())
+
+            elif key == "mining_dutch":
+                snapshots.append(MiningDutchAdapter(pool).fetch_snapshot())
+
         except Exception as exc:
             print(f"Pool fetch failed for {key}: {exc}")
 
     rankings = rank_pool_routes(
         pool_snapshots=snapshots,
         rented_hashrate_ph=best.hashrate_ph,
+        network_hashrate_ph=market.bch_network_hashrate_eh * 1000,
     )
 
     return {
@@ -531,6 +546,7 @@ def test_pool_ranking_engine() -> None:
     rankings = rank_pool_routes(
         pool_snapshots=[snapshot],
         rented_hashrate_ph=300.0,
+        network_hashrate_ph=4000.0,
     )
 
     print(json.dumps(rankings, indent=2))
@@ -546,26 +562,55 @@ def test_two_miners_adapter() -> None:
 
     print(snapshot)
 
-def test_two_pool_ranking_engine() -> None:
-    from pools.molepool import MolepoolAdapter
-    from pools.two_miners import TwoMinersAdapter
+def test_multi_pool_ranking_engine() -> None:
+    from scripts.pools.molepool import MolepoolAdapter
+    from scripts.pools.two_miners import TwoMinersAdapter
+    from scripts.pools.kryptex import KryptexAdapter
+    from scripts.pools.mining_dutch import MiningDutchAdapter
 
     pools = load_pool_config()
 
     mole_cfg = next(p for p in pools if p.get("key") == "molepool")
     two_cfg = next(p for p in pools if p.get("key") == "2miners")
+    kryptex_cfg = next(p for p in pools if p.get("key") == "kryptex")
+    mining_dutch_cfg = next(p for p in pools if p.get("key") == "mining_dutch")
 
     snapshots = [
         MolepoolAdapter(mole_cfg).fetch_snapshot(),
         TwoMinersAdapter(two_cfg).fetch_snapshot(),
+        KryptexAdapter(kryptex_cfg).fetch_snapshot(),
+        MiningDutchAdapter(mining_dutch_cfg).fetch_snapshot(),
     ]
 
     rankings = rank_pool_routes(
         pool_snapshots=snapshots,
         rented_hashrate_ph=300.0,
+        network_hashrate_ph=4000.0,
     )
 
     print(json.dumps(rankings, indent=2))
+
+def test_kryptex_adapter() -> None:
+    from scripts.pools.kryptex import KryptexAdapter
+
+    pools = load_pool_config()
+    cfg = next(p for p in pools if p.get("key") == "kryptex")
+
+    adapter = KryptexAdapter(cfg)
+    snapshot = adapter.fetch_snapshot()
+
+    print(snapshot)
+
+def test_mining_dutch_adapter() -> None:
+    from scripts.pools.mining_dutch import MiningDutchAdapter
+
+    pools = load_pool_config()
+    cfg = next(p for p in pools if p.get("key") == "mining_dutch")
+
+    adapter = MiningDutchAdapter(cfg)
+    snapshot = adapter.fetch_snapshot()
+
+    print(snapshot)
 
 # =============================================================================
 # MARKET DATA
@@ -1679,7 +1724,10 @@ def run_engine() -> Dict[str, Any]:
 
     market_regime = classify_market_regime(best.fair_value_ratio)
 
-    pool_routing = build_pool_rankings_for_strike(best)
+    pool_routing = build_pool_rankings_for_strike(
+        best=best,
+        market=market,
+    )
 
     opportunity = calculate_opportunity_score(
         fair_value_ratio=best.fair_value_ratio,
