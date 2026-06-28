@@ -31,6 +31,8 @@ CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 STATE_DIR.mkdir(parents=True, exist_ok=True)
 
+CONFIG_OVERRIDE_PATH = CONFIG_DIR / "dashboard_config_override.json"
+
 LOG_PATH = LOG_DIR / "bch_solo_rental_strike_engine.jsonl"
 ALERT_LOG_PATH = LOG_DIR / "bch_solo_rental_strike_engine_alerts.jsonl"
 STATE_PATH = STATE_DIR / "bch_solo_rental_strike_engine.json"
@@ -38,9 +40,67 @@ MRR_LISTINGS_PATH = CONFIG_DIR / "mrr_listings.json"
 
 HISTORY_DB_PATH = STATE_DIR / "bch_rental_history.sqlite"
 
-BUDGET_MIN_USD = float(os.getenv("BCH_STRIKE_BUDGET_MIN_USD", "200"))
-BUDGET_MAX_USD = float(os.getenv("BCH_STRIKE_BUDGET_MAX_USD", "300"))
-BUDGET_STEP_USD = float(os.getenv("BCH_STRIKE_BUDGET_STEP_USD", "10"))
+def load_dashboard_config_override() -> Dict[str, Any]:
+    if not CONFIG_OVERRIDE_PATH.exists():
+        return {}
+
+    try:
+        with CONFIG_OVERRIDE_PATH.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        if not isinstance(data, dict):
+            return {}
+
+        return data
+
+    except Exception:
+        return {}
+
+
+def get_config_value(
+    key: str,
+    env_key: str,
+    default: Any,
+    cast_type: type = float,
+) -> Any:
+    override = load_dashboard_config_override()
+
+    if key in override:
+        try:
+            return cast_type(override[key])
+        except Exception:
+            return default
+
+    value = os.getenv(env_key)
+
+    if value is None:
+        return default
+
+    try:
+        return cast_type(value)
+    except Exception:
+        return default
+
+BUDGET_MIN_USD = get_config_value(
+    key="budget_min_usd",
+    env_key="BCH_STRIKE_BUDGET_MIN_USD",
+    default=100,
+    cast_type=float,
+)
+
+BUDGET_MAX_USD = get_config_value(
+    key="budget_max_usd",
+    env_key="BCH_STRIKE_BUDGET_MAX_USD",
+    default=1000,
+    cast_type=float,
+)
+
+BUDGET_STEP_USD = get_config_value(
+    key="budget_step_usd",
+    env_key="BCH_STRIKE_BUDGET_STEP_USD",
+    default=10,
+    cast_type=float,
+)
 
 IDEAL_MIN_HOURS = float(os.getenv("BCH_IDEAL_MIN_HOURS", "1.0"))
 IDEAL_MAX_HOURS = float(os.getenv("BCH_IDEAL_MAX_HOURS", "3.0"))
@@ -474,6 +534,7 @@ def build_pool_rankings_for_strike(
         "rankings": rankings,
         "recommended_pool": rankings[0] if rankings else None,
     }
+
 
 # =============================================================================
 # TEST FUNCTION
