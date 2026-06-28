@@ -14,6 +14,8 @@ st.set_page_config(
 
 STATE_DIR = Path.home() / "bch_rental_engine/state"
 DB_PATH = STATE_DIR / "bch_rental_history.sqlite"
+CONFIG_DIR = Path.home() / "bch_rental_engine/config"
+CONFIG_OVERRIDE_PATH = CONFIG_DIR / "dashboard_config_override.json"
 
 def safe_num(value, default=0.0):
     if pd.isna(value):
@@ -67,6 +69,28 @@ def render_pool_card(pool: dict, index: int):
     st.metric("Dominance", f"{dominance:.2f}%")
     st.metric("Existing Pool", fmt_hashrate_from_ph(existing_pool))
     st.metric("Fee", f"{fee_pct:.2f}%")
+
+def load_config_override() -> dict:
+    if not CONFIG_OVERRIDE_PATH.exists():
+        return {}
+
+    try:
+        import json
+        with CONFIG_OVERRIDE_PATH.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def save_config_override(config: dict) -> None:
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
+    tmp = CONFIG_OVERRIDE_PATH.with_suffix(".tmp")
+    with tmp.open("w", encoding="utf-8") as f:
+        import json
+        json.dump(config, f, indent=2, sort_keys=True)
+
+    tmp.replace(CONFIG_OVERRIDE_PATH)
 
 @st.cache_data(ttl=60)
 def load_history() -> pd.DataFrame:
@@ -425,24 +449,53 @@ elif page == "History":
     st.dataframe(df.tail(100), use_container_width=True)
 
 elif page == "Settings":
-    st.subheader("Current Engine Settings")
+    st.subheader("Editable Engine Settings")
 
-    col1, col2, col3 = st.columns(3)
+    override = load_config_override()
 
-    col1.metric("Budget Min", f"${latest.get('budget_min_usd', 0):,.0f}")
-    col2.metric("Budget Max", f"${latest.get('budget_max_usd', 0):,.0f}")
-    col3.metric("Budget Step", f"${latest.get('budget_step_usd', 0):,.0f}")
+    current_budget_min = int(override.get("budget_min_usd", latest.get("budget_min_usd", 100)))
+    current_budget_max = int(override.get("budget_max_usd", latest.get("budget_max_usd", 1000)))
+    current_budget_step = int(override.get("budget_step_usd", latest.get("budget_step_usd", 10)))
 
-    st.subheader("Latest Config Snapshot")
+    with st.form("settings_form"):
+        budget_min = st.number_input(
+            "Budget Min USD",
+            min_value=1,
+            max_value=100000,
+            value=current_budget_min,
+            step=10,
+        )
 
-    st.write(
-        {
-            "Budget Min": latest.get("budget_min_usd"),
-            "Budget Max": latest.get("budget_max_usd"),
-            "Budget Step": latest.get("budget_step_usd"),
-            "Best Source": latest.get("best_source"),
-            "Best Hashrate PH": latest.get("best_hashrate_ph"),
-            "Best Duration Hours": latest.get("best_duration_hours"),
-            "Best Cost USD": latest.get("best_cost_usd"),
-        }
-    )
+        budget_max = st.number_input(
+            "Budget Max USD",
+            min_value=1,
+            max_value=100000,
+            value=current_budget_max,
+            step=10,
+        )
+
+        budget_step = st.number_input(
+            "Budget Step USD",
+            min_value=1,
+            max_value=10000,
+            value=current_budget_step,
+            step=1,
+        )
+
+        submitted = st.form_submit_button("Save Settings")
+
+    if submitted:
+        if budget_min >= budget_max:
+            st.error("Budget Min must be less than Budget Max.")
+        else:
+            save_config_override(
+                {
+                    "budget_min_usd": int(budget_min),
+                    "budget_max_usd": int(budget_max),
+                    "budget_step_usd": int(budget_step),
+                }
+            )
+            st.success("Settings saved. The engine will use these values after the next engine config update.")
+
+    st.subheader("Current Override File")
+    st.json(load_config_override())
