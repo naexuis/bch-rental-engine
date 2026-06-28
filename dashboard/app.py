@@ -329,12 +329,16 @@ elif page == "Pool Routing":
 
         st.dataframe(display_df, use_container_width=True)
 
+        chart_df = pool_df.copy()
+        chart_df["routing_score"] = chart_df["routing_score"].round(1)
+
         fig = px.bar(
-            pool_df,
+            chart_df,
             x="pool_name",
             y="routing_score",
             text="routing_score",
         )
+        fig.update_traces(texttemplate="%{text:.1f}", textposition="inside")
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("No pool rankings available.")
