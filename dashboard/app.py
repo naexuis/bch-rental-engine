@@ -311,6 +311,25 @@ elif page == "Pool Routing":
     fmt_hashrate_from_ph(recommended_pool.get("existing_pool_hashrate_ph", 0)),
     )
 
+    st.subheader("Why this pool?")
+
+    dominance = safe_num(recommended_pool.get("pool_dominance_pct", 0))
+    existing_pool = recommended_pool.get("existing_pool_hashrate_ph", 0)
+    fee_pct = safe_num(recommended_pool.get("fee_pct", 0))
+    network_share = safe_num(
+        recommended_pool.get("post_rental_network_share_pct", 0)
+    )
+
+    st.write(
+        f"**{recommended_pool.get('pool_name', 'This pool')}** is currently the best routing choice. "
+        f"After adding your rental, you would control approximately **{dominance:.2f}%** of that pool's hashrate. "
+        f"The pool currently has **{fmt_hashrate_from_ph(existing_pool)}** of existing hashrate, "
+        f"charges a **{fee_pct:.2f}%** fee, "
+        f"and your rental would represent approximately **{network_share:.2f}%** of the entire BCH network."
+    )
+
+    st.divider()
+
     st.subheader("Pool Rankings")
 
     if rankings:
