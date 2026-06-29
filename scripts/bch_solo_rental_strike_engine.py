@@ -23,10 +23,10 @@ import requests
 # =============================================================================
 
 BASE_DIR = Path.home() / "bch_rental_engine"
-CONFIG_DIR = BASE_DIR / "config"
+
 LOG_DIR = BASE_DIR / "logs"
 STATE_DIR = BASE_DIR / "state"
-
+CONFIG_DIR = Path(os.getenv("BCH_CONFIG_DIR", "/app/config"))
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 STATE_DIR.mkdir(parents=True, exist_ok=True)
