@@ -113,8 +113,21 @@ def load_history() -> pd.DataFrame:
     df["timestamp"] = pd.to_datetime(df["timestamp"])
     return df
 
+@st.cache_data(ttl=60)
+def load_latest_state() -> dict:
+    state_path = Path.home() / "bch_rental_engine/state/bch_solo_rental_strike_engine.json"
+
+    if not state_path.exists():
+        return {}
+
+    try:
+        with state_path.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
 
 df = load_history()
+state = load_latest_state()
 
 st.title("BCH Solo Rental Strike Engine")
 
@@ -159,6 +172,11 @@ if df.empty:
 
 latest = df.iloc[-1]
 
+best_strike = state.get("winners", {}).get("best_strike", {})
+recommended_pool = state.get("recommended_pool", {})
+interpretation = state.get("interpretation", "")
+engine_answer = state.get("answer", "")
+
 last_updated = latest["timestamp"]
 history_rows = len(df)
 
@@ -179,62 +197,103 @@ if page == "Dashboard":
     st.subheader("Current Decision")
     render_decision_status(action)
 
-    decision_col1, decision_col2 = st.columns([2, 1])
+    st.markdown(f"### {recommendation}")
 
-    with decision_col1:
-        st.markdown(f"""
-# {recommendation}
+    if interpretation:
+        st.write(interpretation)
+    elif engine_answer:
+        st.write(engine_answer)
 
-**Current Recommendation**
+    st.divider()
 
-Probability is high, but the engine still does not like the economics.
+    st.subheader("Best Strike")
 
-**Action:** `{action}`
-""")
+    strike_col1, strike_col2, strike_col3, strike_col4 = st.columns(4)
 
-    with decision_col2:
-        st.metric("Opportunity", f"{opportunity_score:.0f}/100")
-        st.metric("Market Regime", market_regime)
-        st.metric("P(1+ Block)", f"{prob_1plus * 100:.2f}%")
+    strike_col1.metric(
+        "Budget",
+        f"${safe_num(best_strike.get('budget_usd', latest.get('best_cost_usd', 0))):,.0f}",
+    )
 
-    st.subheader("Why?")
+    strike_col2.metric(
+        "Hashrate",
+        fmt_hashrate_from_ph(
+            safe_num(best_strike.get("hashrate_ph", latest.get("best_hashrate_ph", 0)))
+        ),
+    )
 
-    reasons = []
+    strike_col3.metric(
+        "Duration",
+        f"{safe_num(best_strike.get('duration_hours', latest.get('best_duration_hours', 0))):.2f}h",
+    )
 
-    if prob_1plus >= 0.70:
-        reasons.append("✓ Probability is high at the current budget range.")
-    elif prob_1plus >= 0.50:
-        reasons.append("✓ Probability is meaningful, but not exceptional.")
-    else:
-        reasons.append("✗ Probability is still relatively low.")
+    strike_col4.metric(
+        "P(1+ Block)",
+        f"{safe_num(best_strike.get('prob_1plus', latest.get('best_prob_1plus', 0))) * 100:.2f}%",
+    )
 
-    if fvr >= 1.0:
-        reasons.append("✓ Hashpower is priced at or below fair value.")
-    elif fvr >= 0.90:
-        reasons.append("⚠ Hashpower is getting closer to fair value, but still not clearly attractive.")
-    else:
-        reasons.append("✗ Hashpower remains overpriced versus expected BCH value.")
+    strike_col5, strike_col6, strike_col7, strike_col8 = st.columns(4)
 
-    if risk_roi >= 0:
-        reasons.append("✓ Risk-adjusted ROI is positive.")
-    else:
-        reasons.append("✗ Risk-adjusted ROI is still negative.")
+    strike_col5.metric(
+        "FVR",
+        f"{safe_num(best_strike.get('fair_value_ratio', fvr)):.3f}",
+    )
 
-    for reason in reasons:
-        st.write(reason)
+    strike_col6.metric(
+        "Risk ROI",
+        f"{safe_num(best_strike.get('risk_adjusted_roi_pct', risk_roi)):.2f}%",
+    )
 
-    st.subheader("Current Blockers")
+    strike_col7.metric(
+        "Expected Profit",
+        f"${safe_num(best_strike.get('expected_profit_usd', latest.get('best_expected_profit_usd', 0))):,.2f}",
+    )
+
+    strike_col8.metric(
+        "Market Regime",
+        market_regime,
+    )
+
+    st.divider()
+
+    st.subheader("Recommended Pool")
+
+    pool_col1, pool_col2, pool_col3, pool_col4 = st.columns(4)
+
+    pool_col1.metric(
+        "Pool",
+        recommended_pool.get("pool_name", "N/A"),
+    )
+
+    pool_col2.metric(
+        "Routing Score",
+        f"{safe_num(recommended_pool.get('routing_score', 0)):.1f}/100",
+    )
+
+    pool_col3.metric(
+        "Dominance",
+        f"{safe_num(recommended_pool.get('pool_dominance_pct', 0)):.2f}%",
+    )
+
+    pool_col4.metric(
+        "Existing Pool",
+        fmt_hashrate_from_ph(recommended_pool.get("existing_pool_hashrate_ph", 0)),
+    )
+
+    st.divider()
+
+    st.subheader("Main Blockers")
 
     blockers = []
 
     if fvr < 0.90:
-        blockers.append("Rental pricing is still too expensive versus estimated fair value.")
+        blockers.append("Hashpower is still priced above fair value.")
 
     if risk_roi < 0:
         blockers.append("Risk-adjusted ROI is still negative.")
 
     if prob_1plus < 0.70:
-        blockers.append("Probability is not high enough at the current budget range.")
+        blockers.append("Probability is below the preferred threshold.")
 
     if not blockers:
         st.success("No major blockers detected.")
@@ -242,42 +301,13 @@ Probability is high, but the engine still does not like the economics.
         for blocker in blockers:
             st.error(blocker)
 
-    st.subheader("Conditions Needed")
+    st.subheader("Conditions Needed to Rent")
 
     cond1, cond2, cond3 = st.columns(3)
 
-    cond1.metric(
-        "FVR Target",
-        ">= 0.90",
-        f"Current: {fvr:.3f}",
-    )
-
-    cond2.metric(
-        "Risk ROI Target",
-        ">= 0%",
-        f"Current: {risk_roi:.2f}%",
-    )
-
-    cond3.metric(
-        "Probability Target",
-        ">= 70%",
-        f"Current: {prob_1plus * 100:.2f}%",
-    )
-
-    st.subheader("Current Strike")
-
-    strike_col1, strike_col2, strike_col3, strike_col4 = st.columns(4)
-
-    strike_col1.metric("Source", str(latest.get("best_source", "N/A")).upper())
-    strike_col2.metric("Hashrate", f"{latest.get('best_hashrate_ph', 0):,.0f} PH/s")
-    strike_col3.metric("Duration", f"{latest.get('best_duration_hours', 0):.2f}h")
-    strike_col4.metric("Cost", f"${latest.get('best_cost_usd', 0):,.2f}")
-
-    strike_col5, strike_col6, strike_col7 = st.columns(3)
-
-    strike_col5.metric("FVR", f"{fvr:.3f}")
-    strike_col6.metric("Risk ROI", f"{risk_roi:.2f}%")
-    strike_col7.metric("Expected Profit", f"${latest.get('best_expected_profit_usd', 0):,.2f}")
+    cond1.metric("FVR Target", ">= 0.90", f"Current: {fvr:.3f}")
+    cond2.metric("Risk ROI Target", ">= 0%", f"Current: {risk_roi:.2f}%")
+    cond3.metric("Probability Target", ">= 70%", f"Current: {prob_1plus * 100:.2f}%")
 
 elif page == "Market":
     st.subheader("Market Overview")
