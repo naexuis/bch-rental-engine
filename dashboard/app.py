@@ -256,6 +256,84 @@ if page == "Dashboard":
 
     st.divider()
 
+    st.subheader("Budget Frontier")
+
+    frontier = state.get("budget_frontier", [])
+
+    if frontier:
+        rows = []
+
+        for item in frontier:
+            best = item.get("best_score", {}) or item.get("best_probability", {})
+
+            rows.append(
+                {
+                    "budget_usd": safe_num(item.get("budget_usd", best.get("cost_usd", 0))),
+                    "cost_usd": safe_num(best.get("cost_usd", 0)),
+                    "hashrate": fmt_hashrate_from_ph(best.get("hashrate_ph", 0)),
+                    "duration_hours": safe_num(best.get("duration_hours", 0)),
+                    "prob_1plus_pct": safe_num(best.get("prob_1plus", 0)) * 100,
+                    "prob_2plus_pct": safe_num(best.get("prob_2plus", 0)) * 100,
+                    "fvr": safe_num(best.get("fair_value_ratio", 0)),
+                    "risk_roi_pct": safe_num(best.get("risk_adjusted_roi_pct", 0)),
+                    "recommendation": best.get("recommendation", "N/A"),
+                    "source": str(best.get("source", "N/A")).upper(),
+                }
+            )
+
+        frontier_df = pd.DataFrame(rows)
+
+        display_frontier_df = frontier_df.copy()
+        display_frontier_df["budget_usd"] = display_frontier_df["budget_usd"].map(lambda x: f"${x:,.0f}")
+        display_frontier_df["cost_usd"] = display_frontier_df["cost_usd"].map(lambda x: f"${x:,.0f}")
+        display_frontier_df["duration_hours"] = display_frontier_df["duration_hours"].map(lambda x: f"{x:.2f}h")
+        display_frontier_df["prob_1plus_pct"] = display_frontier_df["prob_1plus_pct"].map(lambda x: f"{x:.2f}%")
+        display_frontier_df["prob_2plus_pct"] = display_frontier_df["prob_2plus_pct"].map(lambda x: f"{x:.2f}%")
+        display_frontier_df["fvr"] = display_frontier_df["fvr"].map(lambda x: f"{x:.3f}")
+        display_frontier_df["risk_roi_pct"] = display_frontier_df["risk_roi_pct"].map(lambda x: f"{x:.2f}%")
+
+        display_frontier_df = display_frontier_df[
+            [
+                "budget_usd",
+                "hashrate",
+                "duration_hours",
+                "prob_1plus_pct",
+                "prob_2plus_pct",
+                "fvr",
+                "risk_roi_pct",
+                "recommendation",
+                "source",
+            ]
+        ]
+
+        st.dataframe(display_frontier_df, use_container_width=True)
+
+        chart_df = frontier_df.copy()
+        chart_df["budget_usd"] = chart_df["budget_usd"].round(0)
+        chart_df["prob_1plus_pct"] = chart_df["prob_1plus_pct"].round(2)
+
+        fig = px.line(
+            chart_df,
+            x="budget_usd",
+            y="prob_1plus_pct",
+            markers=True,
+            labels={
+                "budget_usd": "Budget USD",
+                "prob_1plus_pct": "P(1+ Block) %",
+            },
+        )
+
+        fig.update_traces(
+            hovertemplate="Budget: $%{x:,.0f}<br>P(1+): %{y:.2f}%<extra></extra>"
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+    else:
+        st.info("No budget frontier data available yet.")
+
+    st.divider()
+
     st.subheader("Recommended Pool")
 
     pool_col1, pool_col2, pool_col3, pool_col4 = st.columns(4)
