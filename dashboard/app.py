@@ -729,6 +729,21 @@ elif page == "Pool Routing":
         st.warning("No pool routing data available yet.")
         st.stop()
 
+    pool_name = recommended_pool.get("pool_name", "N/A") if recommended_pool else "N/A"
+    pool_score = safe_num(recommended_pool.get("routing_score", 0)) if recommended_pool else 0
+
+    if pool_score >= 85:
+        st.success(f"🟢 Recommended Route: {pool_name}")
+    elif pool_score >= 70:
+        st.warning(f"🟡 Acceptable Route: {pool_name}")
+    else:
+        st.error(f"🔴 Weak Route: {pool_name}")
+
+    st.write(
+        f"Route rented hashrate to **{pool_name}**. "
+        f"It has the highest current routing score at **{pool_score:.1f}/100**."
+    )
+
     col1, col2, col3, col4 = st.columns(4)
 
     col1.metric("Recommended Pool", recommended_pool.get("pool_name", "N/A"))
