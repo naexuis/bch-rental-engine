@@ -1448,38 +1448,78 @@ def build_interpretation_text(
     prob_pct = best.prob_1plus * 100
     fvr = best.fair_value_ratio
     roi = best.risk_adjusted_roi_pct
+    premium = best.premium_discount_pct
     action = opportunity.get("action", "UNKNOWN")
 
-    if prob_pct >= 70 and fvr < 0.90:
-        return (
-            "Probability is high at the larger budget range, but economics still are not good enough to rent. "
-            f"The engine estimates a {prob_pct:.2f}% chance of at least one block, but hashpower is still overpriced "
-            f"with FVR={fvr:.3f} and risk-adjusted ROI={roi:.2f}%. Recommended action: {action}."
+    blockers = []
+
+    if fvr < 0.90:
+        blockers.append(
+            f"Hashpower is still expensive relative to expected BCH value. "
+            f"FVR is {fvr:.3f}, below the 0.900 target."
         )
 
-    if prob_pct >= 50 and fvr < 0.90:
-        return (
-            "The setup has a meaningful block probability, but the rental price is still too expensive relative to expected BCH value. "
-            f"P(1+) is {prob_pct:.2f}%, FVR={fvr:.3f}, and risk-adjusted ROI={roi:.2f}%. Recommended action: {action}."
+    if roi < 0:
+        blockers.append(
+            f"Risk-adjusted ROI is negative at {roi:.2f}%."
         )
+
+    if prob_pct < 70:
+        blockers.append(
+            f"P(1+) is {prob_pct:.2f}%, below the 70.00% target."
+        )
+
+    if premium > 0:
+        blockers.append(
+            f"Rental pricing is about {premium:.2f}% above break-even fair value."
+        )
+
+    if not blockers:
+        blockers.append(
+            "No major blockers detected. Pricing, probability, and risk-adjusted return are all within target ranges."
+        )
+
+    blockers_text = "\n".join(f"• {b}" for b in blockers)
+
+    rent_conditions = [
+        "FVR needs to reach at least 0.900.",
+        "Risk-adjusted ROI needs to reach at least 0.00%.",
+        "P(1+) should be at or above 70.00%.",
+    ]
+
+    rent_conditions_text = "\n".join(f"• {c}" for c in rent_conditions)
 
     if fvr >= 1.0 and roi >= 0:
-        return (
-            "Economics are favorable. Hashpower is priced at or below fair value, and expected return is positive. "
-            f"P(1+) is {prob_pct:.2f}%, FVR={fvr:.3f}, and risk-adjusted ROI={roi:.2f}%. Recommended action: {action}."
-        )
+        headline = "Economics are favorable."
+    elif 0.90 <= fvr < 1.0:
+        headline = "Market is close to fair value, but not attractive enough yet."
+    elif prob_pct >= 70:
+        headline = "Probability is strong, but economics are still unfavorable."
+    elif prob_pct >= 50:
+        headline = "Probability is meaningful, but pricing remains too expensive."
+    else:
+        headline = "The engine recommends waiting."
 
-    if 0.90 <= fvr < 1.0:
-        return (
-            "The market is close to fair value, but not attractive enough yet. "
-            f"P(1+) is {prob_pct:.2f}%, FVR={fvr:.3f}, and risk-adjusted ROI={roi:.2f}%. Recommended action: {action}."
-        )
+    return f"""Recommendation: {best.recommendation}
 
-    return (
-        "The engine recommends waiting. Current hashpower pricing is not attractive enough relative to BCH reward economics. "
-        f"P(1+) is {prob_pct:.2f}%, FVR={fvr:.3f}, market regime is {market_regime}, "
-        f"and risk-adjusted ROI is {roi:.2f}%. Recommended action: {action}."
-    )
+Summary:
+{headline}
+
+Why:
+{blockers_text}
+
+Conditions needed to rent:
+{rent_conditions_text}
+
+Current strike:
+• Source: {best.source.upper()} {best.name}
+• Budget: {fmt_usd(best.budget_usd)}
+• Hashrate: {best.hashrate_ph:.0f} PH/s
+• Duration: {best.duration_hours:.2f}h
+• Market regime: {market_regime}
+• Opportunity score: {opportunity.get("score", "N/A")}/100
+• Action: {action}
+"""
 
 # =============================================================================
 # LOGGING
