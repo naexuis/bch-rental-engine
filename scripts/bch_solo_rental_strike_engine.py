@@ -22,11 +22,16 @@ import requests
 # CONFIG
 # =============================================================================
 
-BASE_DIR = Path.home() / "bch_rental_engine"
+DEFAULT_BASE_DIR = Path.home() / "bch_rental_engine"
 
-LOG_DIR = BASE_DIR / "logs"
-STATE_DIR = BASE_DIR / "state"
-CONFIG_DIR = Path(os.getenv("BCH_CONFIG_DIR", "/app/config"))
+# Allows the same engine code to run in both Docker and local dev.
+# Docker can mount /app/config, while dev falls back to ~/bch_rental_engine/config.
+BASE_DIR = Path(os.getenv("BCH_BASE_DIR", DEFAULT_BASE_DIR))
+
+LOG_DIR = Path(os.getenv("BCH_LOG_DIR", BASE_DIR / "logs"))
+STATE_DIR = Path(os.getenv("BCH_STATE_DIR", BASE_DIR / "state"))
+CONFIG_DIR = Path(os.getenv("BCH_CONFIG_DIR", BASE_DIR / "config"))
+
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 STATE_DIR.mkdir(parents=True, exist_ok=True)
