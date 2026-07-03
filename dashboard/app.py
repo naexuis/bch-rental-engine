@@ -827,25 +827,108 @@ elif page == "Pool Routing":
         st.info("No pool rankings available.")
 
 elif page == "History":
-    st.subheader("Historical Performance")
+    st.subheader("History")
+
+    if df.empty:
+        st.warning("No historical engine runs available yet.")
+        st.stop()
+
+    hist_df = df.copy()
+    hist_df["timestamp"] = pd.to_datetime(hist_df["timestamp"], errors="coerce")
+    hist_df = hist_df.dropna(subset=["timestamp"]).sort_values("timestamp")
+
+    latest_run = hist_df.iloc[-1]
+
+    total_runs = len(hist_df)
+    best_fvr = safe_num(hist_df["best_fair_value_ratio"].max())
+    best_opportunity = safe_num(hist_df["opportunity_score"].dropna().max())
+    avg_risk_roi = safe_num(hist_df["best_risk_adjusted_roi_pct"].mean())
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Runs", len(df))
-    col2.metric("Avg FVR", f"{df['best_fair_value_ratio'].mean():.3f}")
-    col3.metric("Best FVR", f"{df['best_fair_value_ratio'].max():.3f}")
-    col4.metric("Best Opportunity", f"{df['opportunity_score'].dropna().max():.1f}")
+    col1.metric("Total Runs", f"{total_runs:,}")
+    col2.metric("Best FVR", f"{best_fvr:.3f}")
+    col3.metric("Best Opportunity", f"{best_opportunity:.1f}/100")
+    col4.metric("Avg Risk ROI", f"{avg_risk_roi:.1f}%")
+
+    st.divider()
+
+    st.subheader("Recent Engine Decisions")
+
+    decision_cols = [
+        "timestamp",
+        "best_recommendation",
+        "market_regime",
+        "opportunity_action",
+        "best_alert_tier",
+        "best_cost_usd",
+        "best_prob_1plus",
+        "best_fair_value_ratio",
+        "best_risk_adjusted_roi_pct",
+        "opportunity_score",
+    ]
+
+    available_cols = [c for c in decision_cols if c in hist_df.columns]
+    decision_df = hist_df[available_cols].tail(25).copy()
+
+    if "best_cost_usd" in decision_df.columns:
+        decision_df["best_cost_usd"] = decision_df["best_cost_usd"].map(lambda x: f"${safe_num(x):,.0f}")
+
+    if "best_prob_1plus" in decision_df.columns:
+        decision_df["best_prob_1plus"] = decision_df["best_prob_1plus"].map(lambda x: f"{safe_num(x) * 100:.1f}%")
+
+    if "best_fair_value_ratio" in decision_df.columns:
+        decision_df["best_fair_value_ratio"] = decision_df["best_fair_value_ratio"].map(lambda x: f"{safe_num(x):.3f}")
+
+    if "best_risk_adjusted_roi_pct" in decision_df.columns:
+        decision_df["best_risk_adjusted_roi_pct"] = decision_df["best_risk_adjusted_roi_pct"].map(lambda x: f"{safe_num(x):.1f}%")
+
+    st.dataframe(decision_df, use_container_width=True)
+
+    st.divider()
 
     st.subheader("Opportunity Score Over Time")
-    opp_df = df.dropna(subset=["opportunity_score"])
 
-    if not opp_df.empty:
-        fig = px.line(opp_df, x="timestamp", y="opportunity_score")
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("No opportunity score history available yet.")
+    if "opportunity_score" in hist_df.columns:
+        opp_df = hist_df.dropna(subset=["opportunity_score"])
 
-    st.subheader("Recent History")
-    st.dataframe(df.tail(100), use_container_width=True)
+        if not opp_df.empty:
+            fig = px.line(
+                opp_df,
+                x="timestamp",
+                y="opportunity_score",
+                markers=True,
+                labels={
+                    "timestamp": "Time",
+                    "opportunity_score": "Opportunity Score",
+                },
+            )
+            fig.update_layout(height=350)
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No opportunity score history available yet.")
+
+    st.subheader("FVR Over Time")
+
+    if "best_fair_value_ratio" in hist_df.columns:
+        fvr_df = hist_df.dropna(subset=["best_fair_value_ratio"])
+
+        if not fvr_df.empty:
+            fig = px.line(
+                fvr_df,
+                x="timestamp",
+                y="best_fair_value_ratio",
+                markers=True,
+                labels={
+                    "timestamp": "Time",
+                    "best_fair_value_ratio": "FVR",
+                },
+            )
+            fig.add_hline(y=0.90, line_dash="dash", annotation_text="Fair value target")
+            fig.update_layout(height=350)
+            st.plotly_chart(fig, use_container_width=True)
+
+    with st.expander("Detailed Raw History"):
+        st.dataframe(hist_df.tail(100), use_container_width=True)
 
 elif page == "Settings":
     st.subheader("Editable Engine Settings")
