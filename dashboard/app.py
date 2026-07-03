@@ -931,7 +931,7 @@ elif page == "History":
         st.dataframe(hist_df.tail(100), use_container_width=True)
 
 elif page == "Settings":
-    st.subheader("Editable Engine Settings")
+    st.subheader("Settings")
 
     override = load_config_override()
 
@@ -939,7 +939,22 @@ elif page == "Settings":
     current_budget_max = int(override.get("budget_max_usd", latest.get("budget_max_usd", 1000)))
     current_budget_step = int(override.get("budget_step_usd", latest.get("budget_step_usd", 10)))
 
+    st.markdown("### Engine Budget Controls")
+    st.write(
+        "Use these settings to control the budget range the engine evaluates. "
+        "Changes are saved to the dashboard override file and will apply on the next engine run."
+    )
+
+    s1, s2, s3 = st.columns(3)
+    s1.metric("Current Min", f"${current_budget_min:,.0f}")
+    s2.metric("Current Max", f"${current_budget_max:,.0f}")
+    s3.metric("Current Step", f"${current_budget_step:,.0f}")
+
+    st.divider()
+
     with st.form("settings_form"):
+        st.markdown("### Edit Budget Range")
+
         budget_min = st.number_input(
             "Budget Min USD",
             min_value=1,
@@ -967,8 +982,17 @@ elif page == "Settings":
         submitted = st.form_submit_button("Save Settings")
 
     if submitted:
+        errors = []
+
         if budget_min >= budget_max:
-            st.error("Budget Min must be less than Budget Max.")
+            errors.append("Budget Min must be less than Budget Max.")
+
+        if budget_step > (budget_max - budget_min):
+            errors.append("Budget Step should be smaller than the total budget range.")
+
+        if errors:
+            for error in errors:
+                st.error(error)
         else:
             save_config_override(
                 {
@@ -977,7 +1001,13 @@ elif page == "Settings":
                     "budget_step_usd": int(budget_step),
                 }
             )
-            st.success("Settings saved. The engine will use these values after the next engine config update.")
 
-    st.subheader("Current Override File")
+            st.success(
+                "Settings saved. The engine will use these values after the next scheduled engine run."
+            )
+
+    st.divider()
+
+    st.markdown("### Current Override File")
+    st.caption("This is the exact JSON file currently being used by the engine override system.")
     st.json(load_config_override())
