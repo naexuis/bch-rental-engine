@@ -1481,11 +1481,22 @@ def build_interpretation_text(
 
     blockers_text = "\n".join(f"• {b}" for b in blockers)
 
-    rent_conditions = [
-        "FVR needs to reach at least 0.900.",
-        "Risk-adjusted ROI needs to reach at least 0.00%.",
-        "P(1+) should be at or above 70.00%.",
-    ]
+    rent_conditions = []
+
+    if fvr < 0.90:
+        rent_conditions.append(f"FVR needs to improve from {fvr:.3f} to at least 0.900.")
+    else:
+        rent_conditions.append(f"FVR target is met at {fvr:.3f}.")
+
+    if roi < 0:
+        rent_conditions.append(f"Risk-adjusted ROI needs to improve from {roi:.2f}% to at least 0.00%.")
+    else:
+        rent_conditions.append(f"Risk-adjusted ROI target is met at {roi:.2f}%.")
+
+    if prob_pct < 70:
+        rent_conditions.append(f"P(1+) needs to improve from {prob_pct:.2f}% to at least 70.00%.")
+    else:
+        rent_conditions.append(f"P(1+) target is met at {prob_pct:.2f}%.")
 
     rent_conditions_text = "\n".join(f"• {c}" for c in rent_conditions)
 
