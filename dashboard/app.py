@@ -744,6 +744,11 @@ elif page == "Strike Analysis":
             aggfunc="max",
         )
 
+        hover_df = plot_df.copy()
+
+        hover_df["prob_1plus_pct"] = hover_df["prob_1plus"] * 100
+        hover_df["prob_2plus_pct"] = hover_df["prob_2plus"] * 100
+
         fig = px.imshow(
             heat_df,
             aspect="auto",
@@ -753,6 +758,15 @@ elif page == "Strike Analysis":
                 "y": "Hashrate PH/s",
                 "color": heatmap_metric,
             },
+        )
+
+        fig.update_traces(
+            hovertemplate=(
+                "Budget: $%{x}<br>"
+                "Hashrate: %{y} PH/s<br>"
+                f"{heatmap_metric}: %{{z:.2f}}<br>"
+                "<extra></extra>"
+            )
         )
 
         selected = state.get("winners", {}).get("best_strike", {})
