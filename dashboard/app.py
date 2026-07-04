@@ -624,20 +624,26 @@ elif page == "Strike Analysis":
 
     st.subheader("Block Outcome Scenarios")
 
+    p0 = safe_num(best.get("prob_0_blocks", 0))
+    p1plus = safe_num(best.get("prob_1plus", 0))
+    p2plus = safe_num(best.get("prob_2plus", 0))
+
+    p1_exact = max(0, p1plus - p2plus)
+
     outcome_rows = [
         {
             "Outcome": "0 Blocks",
-            "Probability": f"{safe_num(best.get('prob_0_blocks', 0)) * 100:.2f}%",
+            "Probability": f"{p0 * 100:.2f}%",
             "Profit": f"${safe_num(best.get('profit_if_0_blocks', 0)):,.2f}",
         },
         {
             "Outcome": "1 Block",
-            "Probability": "Included in P(1+)",
+            "Probability": f"{p1_exact * 100:.2f}%",
             "Profit": f"${safe_num(best.get('profit_if_1_block', 0)):,.2f}",
         },
         {
-            "Outcome": "2 Blocks",
-            "Probability": f"{safe_num(best.get('prob_2plus', 0)) * 100:.2f}%",
+            "Outcome": "2+ Blocks",
+            "Probability": f"{p2plus * 100:.2f}%",
             "Profit": f"${safe_num(best.get('profit_if_2_blocks', 0)):,.2f}",
         },
     ]
