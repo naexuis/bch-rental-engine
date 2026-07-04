@@ -107,6 +107,27 @@ BUDGET_STEP_USD = get_config_value(
     cast_type=float,
 )
 
+HASHRATE_MIN_PH = get_config_value(
+    key="hashrate_min_ph",
+    env_key="BCH_HASHRATE_MIN_PH",
+    default=300,
+    cast_type=float,
+)
+
+HASHRATE_MAX_PH = get_config_value(
+    key="hashrate_max_ph",
+    env_key="BCH_HASHRATE_MAX_PH",
+    default=300,
+    cast_type=float,
+)
+
+HASHRATE_STEP_PH = get_config_value(
+    key="hashrate_step_ph",
+    env_key="BCH_HASHRATE_STEP_PH",
+    default=50,
+    cast_type=float,
+)
+
 IDEAL_MIN_HOURS = float(os.getenv("BCH_IDEAL_MIN_HOURS", "1.0"))
 IDEAL_MAX_HOURS = float(os.getenv("BCH_IDEAL_MAX_HOURS", "3.0"))
 ABSOLUTE_MAX_HOURS = float(os.getenv("BCH_ABSOLUTE_MAX_HOURS", "12.0"))
@@ -1034,147 +1055,156 @@ def build_and_score_scenarios(
     while budget <= BUDGET_MAX_USD + 1e-9:
         budget_btc = budget / market.btc_usd
 
-        for source in sources:
-            max_affordable_hours = (
-                budget_btc
-                / (source.hashrate_ph * source.price_btc_per_ph_day)
-                * 24
-            )
+        target_hashrate_ph = HASHRATE_MIN_PH
 
-            source_max_allowed_hours = (
-                ABSOLUTE_MAX_HOURS
-                if source.source == "mrr" and ALLOW_LONG_RENTALS
-                else IDEAL_MAX_HOURS
-            )
+        while target_hashrate_ph <= HASHRATE_MAX_PH + 1e-9:
 
-            duration_hours = min(
-                max_affordable_hours,
-                source.max_hours,
-                source_max_allowed_hours,
-            )
+            for source in sources:
+                if target_hashrate_ph > source.hashrate_ph:
+                    continue
 
-            min_required_hours = max(source.min_hours, IDEAL_MIN_HOURS)
+                hashrate_ph = target_hashrate_ph
 
-            if duration_hours < min_required_hours:
-                continue
-
-            strike_type = classify_strike_type(duration_hours)
-
-            if strike_type == "REJECT":
-                continue
-
-            cost_btc = (
-                source.hashrate_ph
-                * source.price_btc_per_ph_day
-                * duration_hours
-                / 24
-            )
-
-            cost_usd = cost_btc * market.btc_usd
-
-            if cost_usd > budget + 0.01:
-                continue
-
-            hashrate_eh = source.hashrate_ph / 1000
-            eh_days = hashrate_eh * (duration_hours / 24)
-
-            expected_blocks = (
-                eh_days
-                / market.bch_network_hashrate_eh
-                * BLOCKS_PER_DAY
-            )
-
-            prob_0 = math.exp(-expected_blocks)
-            prob_1plus = poisson_prob_at_least(expected_blocks, 1)
-            prob_2plus = poisson_prob_at_least(expected_blocks, 2)
-
-            expected_bch_gross = expected_blocks * market.bch_block_reward
-            expected_bch_net = (
-                expected_bch_gross
-                * (1 - POOL_FEE)
-                * (1 - ORPHAN_STALE_RISK)
-            )
-
-            expected_revenue_usd = expected_bch_net * market.bch_usd
-            expected_profit_usd = expected_revenue_usd - cost_usd
-            roi_pct = safe_div(expected_profit_usd, cost_usd) * 100
-
-            risk_adjusted_revenue = expected_revenue_usd * (1 - PRICE_MOVE_BUFFER_PCT)
-            risk_adjusted_cost = cost_usd * (1 + SLIPPAGE_PCT)
-            risk_adjusted_profit = risk_adjusted_revenue - risk_adjusted_cost
-            risk_adjusted_roi_pct = safe_div(risk_adjusted_profit, risk_adjusted_cost) * 100
-
-            one_block_value_usd = market.bch_block_reward * (1 - POOL_FEE) * market.bch_usd
-            profit_if_0 = -cost_usd
-            profit_if_1 = one_block_value_usd - cost_usd
-            profit_if_2 = (2 * one_block_value_usd) - cost_usd
-
-            fair_value_ratio = safe_div(
-                break_even_price_ph_day,
-                source.price_btc_per_ph_day,
-            )
-
-            premium_discount_pct = (
-                safe_div(source.price_btc_per_ph_day, break_even_price_ph_day, math.inf) - 1
-            ) * 100
-
-            duration_penalty = {
-                "SHORT_STRIKE": 0,
-                "EXTENDED_STRIKE": 5,
-                "LONG_SHOT_SESSION": 12,
-            }.get(strike_type, 20)
-
-            strike_score = (
-                120 * prob_1plus
-                + 90 * max(0, fair_value_ratio - 1)
-                + 0.35 * risk_adjusted_roi_pct
-                - duration_penalty
-            )
-
-            grade = classify_strike_grade(fair_value_ratio)
-            tier = classify_alert_tier(
-                fair_value_ratio=fair_value_ratio,
-                risk_adjusted_roi_pct=risk_adjusted_roi_pct,
-                prob_1plus=prob_1plus,
-            )
-
-            scenarios.append(
-                StrikeScenario(
-                    source=source.source,
-                    name=source.name,
-                    strike_type=strike_type,
-                    budget_usd=budget,
-                    budget_btc=budget_btc,
-                    hashrate_ph=source.hashrate_ph,
-                    hashrate_eh=hashrate_eh,
-                    duration_hours=duration_hours,
-                    cost_btc=cost_btc,
-                    cost_usd=cost_usd,
-                    expected_blocks=expected_blocks,
-                    prob_0_blocks=prob_0,
-                    prob_1plus=prob_1plus,
-                    prob_2plus=prob_2plus,
-                    expected_bch_gross=expected_bch_gross,
-                    expected_bch_net=expected_bch_net,
-                    expected_revenue_usd=expected_revenue_usd,
-                    expected_profit_usd=expected_profit_usd,
-                    roi_pct=roi_pct,
-                    risk_adjusted_profit_usd=risk_adjusted_profit,
-                    risk_adjusted_roi_pct=risk_adjusted_roi_pct,
-                    profit_if_0_blocks=profit_if_0,
-                    profit_if_1_block=profit_if_1,
-                    profit_if_2_blocks=profit_if_2,
-                    break_even_price_btc_per_ph_day=break_even_price_ph_day,
-                    current_price_btc_per_ph_day=source.price_btc_per_ph_day,
-                    fair_value_ratio=fair_value_ratio,
-                    premium_discount_pct=premium_discount_pct,
-                    strike_score=strike_score,
-                    strike_grade=grade,
-                    alert_tier=tier,
-                    recommendation=recommendation_from_tier(tier),
+                max_affordable_hours = (
+                    budget_btc
+                    / (hashrate_ph * source.price_btc_per_ph_day)
+                    * 24
                 )
-            )
 
+                source_max_allowed_hours = (
+                    ABSOLUTE_MAX_HOURS
+                    if source.source == "mrr" and ALLOW_LONG_RENTALS
+                    else IDEAL_MAX_HOURS
+                )
+
+                duration_hours = min(
+                    max_affordable_hours,
+                    source.max_hours,
+                    source_max_allowed_hours,
+                )
+
+                min_required_hours = max(source.min_hours, IDEAL_MIN_HOURS)
+
+                if duration_hours < min_required_hours:
+                    continue
+
+                strike_type = classify_strike_type(duration_hours)
+
+                if strike_type == "REJECT":
+                    continue
+
+                cost_btc = (
+                    hashrate_ph
+                    * source.price_btc_per_ph_day
+                    * duration_hours
+                    / 24
+                )
+
+                cost_usd = cost_btc * market.btc_usd
+
+                if cost_usd > budget + 0.01:
+                    continue
+
+                hashrate_eh = hashrate_ph / 1000
+                eh_days = hashrate_eh * (duration_hours / 24)
+
+                expected_blocks = (
+                    eh_days
+                    / market.bch_network_hashrate_eh
+                    * BLOCKS_PER_DAY
+                )
+
+                prob_0 = math.exp(-expected_blocks)
+                prob_1plus = poisson_prob_at_least(expected_blocks, 1)
+                prob_2plus = poisson_prob_at_least(expected_blocks, 2)
+
+                expected_bch_gross = expected_blocks * market.bch_block_reward
+                expected_bch_net = (
+                    expected_bch_gross
+                    * (1 - POOL_FEE)
+                    * (1 - ORPHAN_STALE_RISK)
+                )
+
+                expected_revenue_usd = expected_bch_net * market.bch_usd
+                expected_profit_usd = expected_revenue_usd - cost_usd
+                roi_pct = safe_div(expected_profit_usd, cost_usd) * 100
+
+                risk_adjusted_revenue = expected_revenue_usd * (1 - PRICE_MOVE_BUFFER_PCT)
+                risk_adjusted_cost = cost_usd * (1 + SLIPPAGE_PCT)
+                risk_adjusted_profit = risk_adjusted_revenue - risk_adjusted_cost
+                risk_adjusted_roi_pct = safe_div(risk_adjusted_profit, risk_adjusted_cost) * 100
+
+                one_block_value_usd = market.bch_block_reward * (1 - POOL_FEE) * market.bch_usd
+                profit_if_0 = -cost_usd
+                profit_if_1 = one_block_value_usd - cost_usd
+                profit_if_2 = (2 * one_block_value_usd) - cost_usd
+
+                fair_value_ratio = safe_div(
+                    break_even_price_ph_day,
+                    source.price_btc_per_ph_day,
+                )
+
+                premium_discount_pct = (
+                    safe_div(source.price_btc_per_ph_day, break_even_price_ph_day, math.inf) - 1
+                ) * 100
+
+                duration_penalty = {
+                    "SHORT_STRIKE": 0,
+                    "EXTENDED_STRIKE": 5,
+                    "LONG_SHOT_SESSION": 12,
+                }.get(strike_type, 20)
+
+                strike_score = (
+                    120 * prob_1plus
+                    + 90 * max(0, fair_value_ratio - 1)
+                    + 0.35 * risk_adjusted_roi_pct
+                    - duration_penalty
+                )
+
+                grade = classify_strike_grade(fair_value_ratio)
+                tier = classify_alert_tier(
+                    fair_value_ratio=fair_value_ratio,
+                    risk_adjusted_roi_pct=risk_adjusted_roi_pct,
+                    prob_1plus=prob_1plus,
+                )
+
+                scenarios.append(
+                    StrikeScenario(
+                        source=source.source,
+                        name=source.name,
+                        strike_type=strike_type,
+                        budget_usd=budget,
+                        budget_btc=budget_btc,
+                        hashrate_ph=hashrate_ph,
+                        hashrate_eh=hashrate_eh,
+                        duration_hours=duration_hours,
+                        cost_btc=cost_btc,
+                        cost_usd=cost_usd,
+                        expected_blocks=expected_blocks,
+                        prob_0_blocks=prob_0,
+                        prob_1plus=prob_1plus,
+                        prob_2plus=prob_2plus,
+                        expected_bch_gross=expected_bch_gross,
+                        expected_bch_net=expected_bch_net,
+                        expected_revenue_usd=expected_revenue_usd,
+                        expected_profit_usd=expected_profit_usd,
+                        roi_pct=roi_pct,
+                        risk_adjusted_profit_usd=risk_adjusted_profit,
+                        risk_adjusted_roi_pct=risk_adjusted_roi_pct,
+                        profit_if_0_blocks=profit_if_0,
+                        profit_if_1_block=profit_if_1,
+                        profit_if_2_blocks=profit_if_2,
+                        break_even_price_btc_per_ph_day=break_even_price_ph_day,
+                        current_price_btc_per_ph_day=source.price_btc_per_ph_day,
+                        fair_value_ratio=fair_value_ratio,
+                        premium_discount_pct=premium_discount_pct,
+                        strike_score=strike_score,
+                        strike_grade=grade,
+                        alert_tier=tier,
+                        recommendation=recommendation_from_tier(tier),
+                    )
+                )
+            target_hashrate_ph += HASHRATE_STEP_PH
         budget += BUDGET_STEP_USD
 
     return scenarios
@@ -1903,6 +1933,9 @@ def run_engine() -> Dict[str, Any]:
             "orphan_stale_risk": ORPHAN_STALE_RISK,
             "slippage_pct": SLIPPAGE_PCT,
             "price_move_buffer_pct": PRICE_MOVE_BUFFER_PCT,
+            "hashrate_min_ph": HASHRATE_MIN_PH,
+            "hashrate_max_ph": HASHRATE_MAX_PH,
+            "hashrate_step_ph": HASHRATE_STEP_PH,
         },
         "trends": trends,
         "market_regime": market_regime,
