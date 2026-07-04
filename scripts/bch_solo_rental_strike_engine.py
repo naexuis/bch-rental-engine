@@ -1275,6 +1275,34 @@ def build_budget_frontier(scenarios: List[StrikeScenario]) -> List[Dict[str, Any
 
     return frontier
 
+def build_optimization_surface(
+    scenarios: List[StrikeScenario],
+) -> List[Dict[str, Any]]:
+    surface = []
+
+    for s in scenarios:
+        surface.append(
+            {
+                "source": s.source,
+                "name": s.name,
+                "budget_usd": s.budget_usd,
+                "cost_usd": s.cost_usd,
+                "hashrate_ph": s.hashrate_ph,
+                "duration_hours": s.duration_hours,
+                "prob_1plus": s.prob_1plus,
+                "prob_2plus": s.prob_2plus,
+                "roi_pct": s.roi_pct,
+                "risk_adjusted_roi_pct": s.risk_adjusted_roi_pct,
+                "fair_value_ratio": s.fair_value_ratio,
+                "strike_score": s.strike_score,
+                "strike_grade": s.strike_grade,
+                "recommendation": s.recommendation,
+                "alert_tier": s.alert_tier,
+            }
+        )
+
+    return surface
+
 def summarize_budget_frontier(
     budget_frontier: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
@@ -1864,6 +1892,7 @@ def run_engine() -> Dict[str, Any]:
 
     budget_frontier = build_budget_frontier(scenarios)
     frontier_summary = summarize_budget_frontier(budget_frontier)
+    optimization_surface = build_optimization_surface(scenarios)
 
     cheapest_price = min(s.current_price_btc_per_ph_day for s in scenarios)
     probability_table = calculate_probability_table(market, cheapest_price)
@@ -1942,6 +1971,7 @@ def run_engine() -> Dict[str, Any]:
         "opportunity": opportunity,
         "budget_frontier": budget_frontier,
         "frontier_summary": frontier_summary,
+        "optimization_surface": optimization_surface,
         "interpretation": interpretation,
     }
 

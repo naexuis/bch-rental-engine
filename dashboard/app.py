@@ -707,7 +707,84 @@ elif page == "Strike Analysis":
                 f"Risk ROI {safe_num(strike.get('risk_adjusted_roi_pct',0)):.1f}%"
             )
 
-            st.divider()
+    st.divider()
+
+    st.subheader("Optimization Surface")
+
+    surface = state.get("optimization_surface", [])
+
+    if surface:
+        surface_df = pd.DataFrame(surface)
+
+        heatmap_metric = st.selectbox(
+            "Heatmap Metric",
+            [
+                "strike_score",
+                "prob_1plus",
+                "risk_adjusted_roi_pct",
+                "fair_value_ratio",
+            ],
+            format_func=lambda x: {
+                "strike_score": "Strike Score",
+                "prob_1plus": "P(1+ Block)",
+                "risk_adjusted_roi_pct": "Risk ROI %",
+                "fair_value_ratio": "FVR",
+            }.get(x, x),
+        )
+
+        plot_df = surface_df.copy()
+
+        if heatmap_metric == "prob_1plus":
+            plot_df[heatmap_metric] = plot_df[heatmap_metric] * 100
+
+        heat_df = plot_df.pivot_table(
+            index="hashrate_ph",
+            columns="budget_usd",
+            values=heatmap_metric,
+            aggfunc="max",
+        )
+
+        fig = px.imshow(
+            heat_df,
+            aspect="auto",
+            title="Budget × Hashrate Optimization Surface",
+            labels={
+                "x": "Budget USD",
+                "y": "Hashrate PH/s",
+                "color": heatmap_metric,
+            },
+        )
+
+        selected = state.get("winners", {}).get("best_strike", {})
+
+        selected_budget = selected.get("budget_usd")
+        selected_hashrate = selected.get("hashrate_ph")
+
+        if selected_budget is not None and selected_hashrate is not None:
+            fig.add_scatter(
+                x=[selected_budget],
+                y=[selected_hashrate],
+                mode="markers+text",
+                marker=dict(
+                    size=18,
+                    symbol="star",
+                    color="red",
+                    line=dict(width=2, color="white"),
+                ),
+                text=["Selected"],
+                textposition="top center",
+                name="Selected Strike",
+            )
+
+        fig.update_layout(height=450)
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.caption(
+            "This heatmap shows how the engine scored each budget and hashrate combination."
+        )
+    else:
+        st.info("No optimization surface data available yet.")
+
 
 elif page == "Pool Routing":
     st.subheader("Pool Routing")
