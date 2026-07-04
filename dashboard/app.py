@@ -939,6 +939,10 @@ elif page == "Settings":
     current_budget_max = int(override.get("budget_max_usd", latest.get("budget_max_usd", 1000)))
     current_budget_step = int(override.get("budget_step_usd", latest.get("budget_step_usd", 10)))
 
+    current_hashrate_min = int(override.get("hashrate_min_ph", latest.get("hashrate_min_ph", 300)))
+    current_hashrate_max = int(override.get("hashrate_max_ph", latest.get("hashrate_max_ph", 300)))
+    current_hashrate_step = int(override.get("hashrate_step_ph", latest.get("hashrate_step_ph", 50)))
+
     st.markdown("### Engine Budget Controls")
     st.write(
         "Use these settings to control the budget range the engine evaluates. "
@@ -949,6 +953,11 @@ elif page == "Settings":
     s1.metric("Current Min", f"${current_budget_min:,.0f}")
     s2.metric("Current Max", f"${current_budget_max:,.0f}")
     s3.metric("Current Step", f"${current_budget_step:,.0f}")
+
+    h1, h2, h3 = st.columns(3)
+    h1.metric("Hashrate Min", f"{current_hashrate_min:,.0f} PH/s")
+    h2.metric("Hashrate Max", f"{current_hashrate_max:,.0f} PH/s")
+    h3.metric("Hashrate Step", f"{current_hashrate_step:,.0f} PH/s")
 
     st.divider()
 
@@ -979,6 +988,32 @@ elif page == "Settings":
             step=1,
         )
 
+        st.markdown("### Edit Hashrate Range")
+
+        hashrate_min = st.number_input(
+            "Hashrate Min PH/s",
+            min_value=1,
+            max_value=100000,
+            value=current_hashrate_min,
+            step=10,
+        )
+
+        hashrate_max = st.number_input(
+            "Hashrate Max PH/s",
+            min_value=1,
+            max_value=100000,
+            value=current_hashrate_max,
+            step=10,
+        )
+
+        hashrate_step = st.number_input(
+            "Hashrate Step PH/s",
+            min_value=1,
+            max_value=10000,
+            value=current_hashrate_step,
+            step=10,
+        )
+
         submitted = st.form_submit_button("Save Settings")
 
     if submitted:
@@ -990,6 +1025,12 @@ elif page == "Settings":
         if budget_step > (budget_max - budget_min):
             errors.append("Budget Step should be smaller than the total budget range.")
 
+        if hashrate_min > hashrate_max:
+            errors.append("Hashrate Min must be less than or equal to Hashrate Max.")
+
+        if hashrate_step > (hashrate_max - hashrate_min) and hashrate_min != hashrate_max:
+            errors.append("Hashrate Step should be smaller than the total hashrate range.")
+
         if errors:
             for error in errors:
                 st.error(error)
@@ -999,6 +1040,9 @@ elif page == "Settings":
                     "budget_min_usd": int(budget_min),
                     "budget_max_usd": int(budget_max),
                     "budget_step_usd": int(budget_step),
+                    "hashrate_min_ph": int(hashrate_min),
+                    "hashrate_max_ph": int(hashrate_max),
+                    "hashrate_step_ph": int(hashrate_step),
                 }
             )
 
