@@ -924,108 +924,126 @@ elif page == "Pool Routing":
         st.info("No pool rankings available.")
 
 elif page == "History":
-    st.subheader("History")
+    st.subheader("Historical Performance")
 
-    if df.empty:
-        st.warning("No historical engine runs available yet.")
+    import sqlite3
+
+    history_path = Path.home() / "bch_rental_engine/state/bch_rental_history.sqlite"
+
+    if not history_path.exists():
+        st.warning("History database not found yet.")
         st.stop()
 
-    hist_df = df.copy()
+    with sqlite3.connect(history_path) as conn:
+        hist_df = pd.read_sql_query(
+            "SELECT * FROM run_history ORDER BY timestamp ASC",
+            conn,
+        )
+
+    if hist_df.empty:
+        st.warning("No history records available yet.")
+        st.stop()
+
     hist_df["timestamp"] = pd.to_datetime(hist_df["timestamp"], errors="coerce")
     hist_df = hist_df.dropna(subset=["timestamp"]).sort_values("timestamp")
 
-    latest_run = hist_df.iloc[-1]
+    hist_df["best_prob_1plus_pct"] = hist_df["best_prob_1plus"] * 100
 
-    total_runs = len(hist_df)
-    best_fvr = safe_num(hist_df["best_fair_value_ratio"].max())
-    best_opportunity = safe_num(hist_df["opportunity_score"].dropna().max())
-    avg_risk_roi = safe_num(hist_df["best_risk_adjusted_roi_pct"].mean())
+    latest_hist = hist_df.iloc[-1]
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Runs", f"{total_runs:,}")
-    col2.metric("Best FVR", f"{best_fvr:.3f}")
-    col3.metric("Best Opportunity", f"{best_opportunity:.1f}/100")
-    col4.metric("Avg Risk ROI", f"{avg_risk_roi:.1f}%")
+    col1.metric("Total Runs", f"{len(hist_df):,}")
+    col2.metric("Latest Recommendation", str(latest_hist.get("best_recommendation", "N/A")))
+    col3.metric("Latest FVR", f"{safe_num(latest_hist.get('best_fair_value_ratio', 0)):.3f}")
+    col4.metric("Latest Risk ROI", f"{safe_num(latest_hist.get('best_risk_adjusted_roi_pct', 0)):.2f}%")
 
     st.divider()
 
-    st.subheader("Recent Engine Decisions")
+    st.subheader("Recommendation Timeline")
 
-    decision_cols = [
-        "timestamp",
-        "best_recommendation",
-        "market_regime",
-        "opportunity_action",
-        "best_alert_tier",
-        "best_cost_usd",
-        "best_prob_1plus",
-        "best_fair_value_ratio",
-        "best_risk_adjusted_roi_pct",
-        "opportunity_score",
-    ]
+    timeline_df = hist_df[
+        [
+            "timestamp",
+            "best_recommendation",
+            "opportunity_action",
+            "opportunity_score",
+            "best_prob_1plus_pct",
+            "best_risk_adjusted_roi_pct",
+            "best_fair_value_ratio",
+            "best_hashrate_ph",
+            "best_cost_usd",
+            "best_duration_hours",
+        ]
+    ].tail(100).copy()
 
-    available_cols = [c for c in decision_cols if c in hist_df.columns]
-    decision_df = hist_df[available_cols].tail(25).copy()
+    timeline_df["timestamp"] = timeline_df["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S")
+    timeline_df["best_prob_1plus_pct"] = timeline_df["best_prob_1plus_pct"].round(2)
+    timeline_df["best_risk_adjusted_roi_pct"] = timeline_df["best_risk_adjusted_roi_pct"].round(2)
+    timeline_df["best_fair_value_ratio"] = timeline_df["best_fair_value_ratio"].round(3)
+    timeline_df["best_hashrate_ph"] = timeline_df["best_hashrate_ph"].round(0)
+    timeline_df["best_cost_usd"] = timeline_df["best_cost_usd"].round(2)
+    timeline_df["best_duration_hours"] = timeline_df["best_duration_hours"].round(2)
 
-    if "best_cost_usd" in decision_df.columns:
-        decision_df["best_cost_usd"] = decision_df["best_cost_usd"].map(lambda x: f"${safe_num(x):,.0f}")
-
-    if "best_prob_1plus" in decision_df.columns:
-        decision_df["best_prob_1plus"] = decision_df["best_prob_1plus"].map(lambda x: f"{safe_num(x) * 100:.1f}%")
-
-    if "best_fair_value_ratio" in decision_df.columns:
-        decision_df["best_fair_value_ratio"] = decision_df["best_fair_value_ratio"].map(lambda x: f"{safe_num(x):.3f}")
-
-    if "best_risk_adjusted_roi_pct" in decision_df.columns:
-        decision_df["best_risk_adjusted_roi_pct"] = decision_df["best_risk_adjusted_roi_pct"].map(lambda x: f"{safe_num(x):.1f}%")
-
-    st.dataframe(decision_df, use_container_width=True)
+    st.dataframe(timeline_df, use_container_width=True)
 
     st.divider()
 
-    st.subheader("Opportunity Score Over Time")
+    st.subheader("Key Metric Trends")
 
-    if "opportunity_score" in hist_df.columns:
-        opp_df = hist_df.dropna(subset=["opportunity_score"])
+    fig = px.line(
+        hist_df,
+        x="timestamp",
+        y="opportunity_score",
+        markers=True,
+        title="Opportunity Score Over Time",
+        labels={"timestamp": "Time", "opportunity_score": "Opportunity Score"},
+    )
+    fig.update_layout(height=350)
+    st.plotly_chart(fig, use_container_width=True)
 
-        if not opp_df.empty:
-            fig = px.line(
-                opp_df,
-                x="timestamp",
-                y="opportunity_score",
-                markers=True,
-                labels={
-                    "timestamp": "Time",
-                    "opportunity_score": "Opportunity Score",
-                },
-            )
-            fig.update_layout(height=350)
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("No opportunity score history available yet.")
+    fig = px.line(
+        hist_df,
+        x="timestamp",
+        y="best_prob_1plus_pct",
+        markers=True,
+        title="P(1+ Block) Over Time",
+        labels={"timestamp": "Time", "best_prob_1plus_pct": "P(1+ Block) %"},
+    )
+    fig.add_hline(y=70, line_dash="dash", annotation_text="Target: 70%")
+    fig.update_layout(height=350)
+    st.plotly_chart(fig, use_container_width=True)
 
-    st.subheader("FVR Over Time")
+    fig = px.line(
+        hist_df,
+        x="timestamp",
+        y="best_risk_adjusted_roi_pct",
+        markers=True,
+        title="Risk-Adjusted ROI Over Time",
+        labels={"timestamp": "Time", "best_risk_adjusted_roi_pct": "Risk ROI %"},
+    )
+    fig.add_hline(y=0, line_dash="dash", annotation_text="Break-even")
+    fig.update_layout(height=350)
+    st.plotly_chart(fig, use_container_width=True)
 
-    if "best_fair_value_ratio" in hist_df.columns:
-        fvr_df = hist_df.dropna(subset=["best_fair_value_ratio"])
+    fig = px.line(
+        hist_df,
+        x="timestamp",
+        y="best_fair_value_ratio",
+        markers=True,
+        title="Fair Value Ratio Over Time",
+        labels={"timestamp": "Time", "best_fair_value_ratio": "FVR"},
+    )
+    fig.add_hline(y=0.90, line_dash="dash", annotation_text="Watch target: 0.90")
+    fig.add_hline(y=1.00, line_dash="dash", annotation_text="Fair value: 1.00")
+    fig.update_layout(height=350)
+    st.plotly_chart(fig, use_container_width=True)
 
-        if not fvr_df.empty:
-            fig = px.line(
-                fvr_df,
-                x="timestamp",
-                y="best_fair_value_ratio",
-                markers=True,
-                labels={
-                    "timestamp": "Time",
-                    "best_fair_value_ratio": "FVR",
-                },
-            )
-            fig.add_hline(y=0.90, line_dash="dash", annotation_text="Fair value target")
-            fig.update_layout(height=350)
-            st.plotly_chart(fig, use_container_width=True)
+    st.divider()
 
-    with st.expander("Detailed Raw History"):
-        st.dataframe(hist_df.tail(100), use_container_width=True)
+    st.subheader("Raw History")
+
+    with st.expander("Show raw history table"):
+        st.dataframe(hist_df.tail(500), use_container_width=True)
 
 elif page == "Settings":
     st.subheader("Settings")
