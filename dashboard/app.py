@@ -222,65 +222,71 @@ recommendation = latest.get("best_recommendation", "N/A")
 action = str(latest.get("opportunity_action", "WAIT")).upper()
 
 if page == "Dashboard":
-    st.subheader("Current Decision")
-    render_decision_status(action)
 
-    st.markdown(f"### {recommendation}")
+    winners = state.get("winners", {})
+    best = winners.get("best_strike", {}) or {}
+    opportunity = state.get("opportunity", {}) or {}
 
-    if interpretation:
-        st.write(interpretation)
-    elif engine_answer:
-        st.write(engine_answer)
+    recommendation = str(best.get("recommendation", state.get("recommendation", "N/A"))).upper()
+    market_regime = str(state.get("market_regime", "N/A")).upper()
+    action = str(opportunity.get("action", "N/A")).upper()
 
-    st.divider()
+    opportunity_score = safe_num(opportunity.get("score", 0))
+    prob_1plus = safe_num(best.get("prob_1plus", 0)) * 100
+    risk_roi = safe_num(best.get("risk_adjusted_roi_pct", 0))
+    fvr = safe_num(best.get("fair_value_ratio", 0))
+    premium = safe_num(best.get("premium_discount_pct", 0))
+    strike_score = safe_num(best.get("strike_score", 0))
 
-    st.subheader("Best Strike")
+    st.subheader("Decision Center")
 
-    strike_col1, strike_col2, strike_col3, strike_col4 = st.columns(4)
+    if recommendation in ["RENT", "STRONG_RENT"]:
+        st.success(f"🟢 Current Recommendation: {recommendation}")
+    elif recommendation in ["WATCH", "MONITOR"]:
+        st.warning(f"🟡 Current Recommendation: {recommendation}")
+    else:
+        st.error(f"🔴 Current Recommendation: {recommendation}")
 
-    strike_col1.metric(
-        "Budget",
-        f"${safe_num(best_strike.get('budget_usd', latest.get('best_cost_usd', 0))):,.0f}",
-    )
+    d1, d2, d3, d4 = st.columns(4)
 
-    strike_col2.metric(
-        "Hashrate",
-        fmt_hashrate_from_ph(
-            safe_num(best_strike.get("hashrate_ph", latest.get("best_hashrate_ph", 0)))
-        ),
-    )
+    d1.metric("Opportunity Score", f"{opportunity_score:.1f}/100")
+    d2.metric("Market Regime", market_regime)
+    d3.metric("Action", action)
+    d4.metric("Strike Score", f"{strike_score:.1f}/100")
 
-    strike_col3.metric(
-        "Duration",
-        f"{safe_num(best_strike.get('duration_hours', latest.get('best_duration_hours', 0))):.2f}h",
-    )
+    d5, d6, d7, d8 = st.columns(4)
 
-    strike_col4.metric(
-        "P(1+ Block)",
-        f"{safe_num(best_strike.get('prob_1plus', latest.get('best_prob_1plus', 0))) * 100:.2f}%",
-    )
+    d5.metric("P(1+ Block)", f"{prob_1plus:.2f}%")
+    d6.metric("Risk ROI", f"{risk_roi:.2f}%")
+    d7.metric("FVR", f"{fvr:.3f}")
+    d8.metric("Rental Premium", f"{premium:+.2f}%")
 
-    strike_col5, strike_col6, strike_col7, strike_col8 = st.columns(4)
+    st.markdown("#### Why?")
 
-    strike_col5.metric(
-        "FVR",
-        f"{safe_num(best_strike.get('fair_value_ratio', fvr)):.3f}",
-    )
+    reasons = []
 
-    strike_col6.metric(
-        "Risk ROI",
-        f"{safe_num(best_strike.get('risk_adjusted_roi_pct', risk_roi)):.2f}%",
-    )
+    if fvr >= 0.90:
+        reasons.append("✅ FVR is above the 0.90 watch threshold.")
+    else:
+        reasons.append("❌ FVR is below the 0.90 watch threshold.")
 
-    strike_col7.metric(
-        "Expected Profit",
-        f"${safe_num(best_strike.get('expected_profit_usd', latest.get('best_expected_profit_usd', 0))):,.2f}",
-    )
+    if prob_1plus >= 70:
+        reasons.append("✅ P(1+ Block) is above the 70% target.")
+    else:
+        reasons.append(f"❌ P(1+ Block) is below target at {prob_1plus:.2f}%.")
 
-    strike_col8.metric(
-        "Market Regime",
-        market_regime,
-    )
+    if risk_roi >= 0:
+        reasons.append("✅ Risk-adjusted ROI is positive.")
+    else:
+        reasons.append(f"❌ Risk-adjusted ROI is still negative at {risk_roi:.2f}%.")
+
+    if premium <= 0:
+        reasons.append("✅ Rental pricing is at or below break-even fair value.")
+    else:
+        reasons.append(f"❌ Rental pricing is still {premium:.2f}% above break-even.")
+
+    for reason in reasons:
+        st.write(reason)
 
     st.divider()
 
@@ -398,7 +404,7 @@ if page == "Dashboard":
     if risk_roi < 0:
         blockers.append("Risk-adjusted ROI is still negative.")
 
-    if prob_1plus < 0.70:
+    if prob_1plus < 70:
         blockers.append("Probability is below the preferred threshold.")
 
     if not blockers:
@@ -413,7 +419,7 @@ if page == "Dashboard":
 
     cond1.metric("FVR Target", ">= 0.90", f"Current: {fvr:.3f}")
     cond2.metric("Risk ROI Target", ">= 0%", f"Current: {risk_roi:.2f}%")
-    cond3.metric("Probability Target", ">= 70%", f"Current: {prob_1plus * 100:.2f}%")
+    cond3.metric("Probability Target", ">= 70%", f"Current: {prob_1plus:.2f}%")
 
 elif page == "Market":
     st.subheader("Market Overview")
