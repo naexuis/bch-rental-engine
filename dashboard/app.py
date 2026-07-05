@@ -22,6 +22,23 @@ def safe_num(value, default=0.0):
         return default
     return value
 
+def fmt_large_number(value):
+    value = safe_num(value)
+
+    if abs(value) >= 1_000_000_000_000:
+        return f"{value/1_000_000_000_000:.2f} T"
+
+    if abs(value) >= 1_000_000_000:
+        return f"{value/1_000_000_000:.2f} B"
+
+    if abs(value) >= 1_000_000:
+        return f"{value/1_000_000:.2f} M"
+
+    if abs(value) >= 1_000:
+        return f"{value/1_000:.2f} K"
+
+    return f"{value:,.0f}"
+
 def fmt_hashrate_from_ph(value_ph):
     value_ph = safe_num(value_ph)
 
@@ -404,7 +421,7 @@ elif page == "Market":
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("BTC Price", f"${latest.get('btc_usd', 0):,.0f}")
     col2.metric("BCH Price", f"${latest.get('bch_usd', 0):,.2f}")
-    col3.metric("Difficulty", f"{latest.get('bch_difficulty', 0):,.0f}")
+    col3.metric("Difficulty", fmt_large_number(latest.get("bch_difficulty", 0)))
     col4.metric("Network EH/s", f"{latest.get('bch_network_hashrate_eh', 0):.4f}")
 
     st.subheader("Fair Value Ratio Over Time")
