@@ -1,10 +1,13 @@
 from pathlib import Path
 import sqlite3
 import json
+import os
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
+import yfinance as yf
+import plotly.graph_objects as go
 
 
 st.set_page_config(
@@ -12,9 +15,12 @@ st.set_page_config(
     layout="wide",
 )
 
-STATE_DIR = Path.home() / "bch_rental_engine/state"
+BASE_DIR = Path(os.getenv("BCH_BASE_DIR", Path.home() / "bch_rental_engine"))
+STATE_DIR = Path(os.getenv("BCH_STATE_DIR", BASE_DIR / "state"))
+CONFIG_DIR = Path(os.getenv("BCH_CONFIG_DIR", BASE_DIR / "config"))
+
 DB_PATH = STATE_DIR / "bch_rental_history.sqlite"
-CONFIG_DIR = Path.home() / "bch_rental_engine/config"
+STATE_PATH = STATE_DIR / "bch_solo_rental_strike_engine.json"
 CONFIG_OVERRIDE_PATH = CONFIG_DIR / "dashboard_config_override.json"
 
 def safe_num(value, default=0.0):
@@ -142,7 +148,7 @@ def load_history() -> pd.DataFrame:
 
 @st.cache_data(ttl=60)
 def load_latest_state() -> dict:
-    state_path = Path.home() / "bch_rental_engine/state/bch_solo_rental_strike_engine.json"
+    state_path = STATE_PATH
 
     if not state_path.exists():
         return {}
@@ -171,6 +177,77 @@ page = st.sidebar.radio(
     ],
     key="main_navigation",
 )
+
+@st.cache_data(ttl=300)
+def fetch_yfinance_ohlc(ticker: str, period: str, interval: str) -> pd.DataFrame:
+    df = yf.Ticker(ticker).history(period=period, interval=interval)
+
+    if df.empty:
+        return pd.DataFrame()
+
+    df = df.reset_index()
+
+    time_col = "Datetime" if "Datetime" in df.columns else "Date"
+    df = df.rename(
+        columns={
+            time_col: "time",
+            "Open": "open",
+            "High": "high",
+            "Low": "low",
+            "Close": "close",
+            "Volume": "volume",
+        }
+    )
+
+    return df[["time", "open", "high", "low", "close", "volume"]].dropna()
+
+def get_candle_settings(range_label: str) -> dict:
+    settings = {
+        "Past 24 Hours": {
+            "left_label": "15m Trend",
+            "left_period": "1d",
+            "left_interval": "15m",
+            "right_label": "5m Tactical",
+            "right_period": "1d",
+            "right_interval": "5m",
+        },
+        "Past 3 Days": {
+            "left_label": "1H Trend",
+            "left_period": "3d",
+            "left_interval": "1h",
+            "right_label": "15m Tactical",
+            "right_period": "3d",
+            "right_interval": "15m",
+        },
+        "Past 7 Days": {
+            "left_label": "4H Trend",
+            "left_period": "7d",
+            "left_interval": "4h",
+            "right_label": "1H Tactical",
+            "right_period": "7d",
+            "right_interval": "1h",
+        },
+        "Past 30 Days": {
+            "left_label": "1D Trend",
+            "left_period": "1mo",
+            "left_interval": "1d",
+            "right_label": "4H Tactical",
+            "right_period": "30d",
+            "right_interval": "4h",
+        },
+        "Past Year": {
+            "left_label": "1W Trend",
+            "left_period": "1y",
+            "left_interval": "1wk",
+            "right_label": "1D Tactical",
+            "right_period": "1y",
+            "right_interval": "1d",
+        },
+    }
+
+    return settings.get(range_label, settings["Past 7 Days"])
+
+
 
 st.sidebar.divider()
 
@@ -429,6 +506,103 @@ elif page == "Market":
     col2.metric("BCH Price", f"${latest.get('bch_usd', 0):,.2f}")
     col3.metric("Difficulty", fmt_large_number(latest.get("bch_difficulty", 0)))
     col4.metric("Network EH/s", f"{latest.get('bch_network_hashrate_eh', 0):.4f}")
+
+    st.divider()
+    st.subheader("BCH Price Candlesticks")
+
+    candle_ticker = st.selectbox(
+        "Trading Pair",
+        ["BCH-USD", "BCH-BTC"],
+        index=0,
+    )
+
+    candle_range = st.selectbox(
+        "Time Range",
+        [
+            "Past 24 Hours",
+            "Past 3 Days",
+            "Past 7 Days",
+            "Past 30 Days",
+            "Past Year",
+        ],
+        index=2,
+    )
+
+    candle_settings = get_candle_settings(candle_range)
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+        st.markdown(f"### {candle_settings['left_label']}")
+        try:
+            df_4h = fetch_yfinance_ohlc(
+                candle_ticker,
+                candle_settings["left_period"],
+                candle_settings["left_interval"],
+            )
+
+            if df_4h.empty:
+                st.warning("No left candle data returned.")
+            else:
+                fig = go.Figure(
+                    data=[
+                        go.Candlestick(
+                            x=df_4h["time"],
+                            open=df_4h["open"],
+                            high=df_4h["high"],
+                            low=df_4h["low"],
+                            close=df_4h["close"],
+                            increasing_line_color="#2ECC71",
+                            decreasing_line_color="#E74C3C",
+                            name="4H",
+                        )
+                    ]
+                )
+                fig.update_layout(
+                    height=450,
+                    xaxis_rangeslider_visible=False,
+                    title=f"{candle_ticker} {candle_settings['left_label']} Candlestick",
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+        except Exception as e:
+            st.warning(f"Unable to load left candles: {e}")
+
+    with c2:
+        st.markdown(f"### {candle_settings['right_label']}")
+        try:
+            df_15m = fetch_yfinance_ohlc(
+                candle_ticker,
+                candle_settings["right_period"],
+                candle_settings["right_interval"],
+            )
+
+            if df_15m.empty:
+                st.warning("No right candle data returned.")
+            else:
+                fig = go.Figure(
+                    data=[
+                        go.Candlestick(
+                            x=df_15m["time"],
+                            open=df_15m["open"],
+                            high=df_15m["high"],
+                            low=df_15m["low"],
+                            close=df_15m["close"],
+                            increasing_line_color="#2ECC71",
+                            decreasing_line_color="#E74C3C",
+                            name="15m",
+                        )
+                    ]
+                )
+                fig.update_layout(
+                    height=450,
+                    xaxis_rangeslider_visible=False,
+                    title=f"{candle_ticker} {candle_settings['right_label']} Candlestick",
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+        except Exception as e:
+            st.warning(f"Unable to load right candles: {e}")
 
     st.subheader("Fair Value Ratio Over Time")
     fig = px.line(df, x="timestamp", y="best_fair_value_ratio")
@@ -833,7 +1007,7 @@ elif page == "Pool Routing":
     st.subheader("Pool Routing")
     render_decision_status(action)
 
-    state_path = Path.home() / "bch_rental_engine/state/bch_solo_rental_strike_engine.json"
+    state_path = STATE_PATH
 
     if not state_path.exists():
         st.warning("Latest engine state file not found yet.")
@@ -951,7 +1125,7 @@ elif page == "History":
 
     import sqlite3
 
-    history_path = Path.home() / "bch_rental_engine/state/bch_rental_history.sqlite"
+    history_path = DB_PATH
 
     if not history_path.exists():
         st.warning("History database not found yet.")

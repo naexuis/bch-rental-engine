@@ -1,4 +1,6 @@
+
+plotly
 requests
 streamlit
 streamlit-autorefresh
-plotly
+yfinance
