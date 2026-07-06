@@ -1599,9 +1599,41 @@ Current strike:
 # LOGGING
 # =============================================================================
 
+MAX_JSONL_LOG_BYTES = int(os.getenv("BCH_MAX_JSONL_LOG_BYTES", str(10 * 1024 * 1024)))
+MAX_JSONL_LOG_BACKUPS = int(os.getenv("BCH_MAX_JSONL_LOG_BACKUPS", "3"))
+
+
+def rotate_jsonl_log_if_needed(path: Path) -> None:
+    if MAX_JSONL_LOG_BYTES <= 0:
+        return
+
+    if not path.exists():
+        return
+
+    if path.stat().st_size < MAX_JSONL_LOG_BYTES:
+        return
+
+    for idx in range(MAX_JSONL_LOG_BACKUPS, 0, -1):
+        src = path.with_name(f"{path.name}.{idx}")
+        dst = path.with_name(f"{path.name}.{idx + 1}")
+
+        if src.exists():
+            if idx >= MAX_JSONL_LOG_BACKUPS:
+                src.unlink()
+            else:
+                src.replace(dst)
+
+    path.replace(path.with_name(f"{path.name}.1"))
+
+
 def write_jsonl_log(path: Path, record: Dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rotate_jsonl_log_if_needed(path)
+
     with path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(record, default=str, sort_keys=True) + "\n")
+        f.write(json.dumps(record, sort_keys=True) + "\n")
+
+    rotate_jsonl_log_if_needed(path)
 
 
 def write_latest_state(path: Path, record: Dict[str, Any]) -> None:
