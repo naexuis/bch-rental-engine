@@ -25,6 +25,35 @@ The project combines market data, hashpower rental pricing, block probability mo
 - BCH candlestick charts with multiple time ranges
 - Docker deployment support
 
+## Project Status
+
+Current Version: **v1.1.0**
+
+Status: **Active Development**
+
+Completed:
+
+- ✅ BCH rental optimization engine
+- ✅ Streamlit dashboard
+- ✅ Historical SQLite database
+- ✅ Candlestick market analysis
+- ✅ Opportunity scoring
+- ✅ Pool routing
+- ✅ Telegram alerts
+- ✅ Docker deployment
+- ✅ Automatic log rotation
+
+In Progress:
+
+- 📖 Documentation
+- 📈 Technical Analysis Engine
+
+Planned:
+
+- Dashboard configuration editor
+- Market health score
+- Historical strategy backtesting
+
 ## Architecture
 
 ```text
@@ -167,6 +196,26 @@ The engine writes:
 This project is a decision-support tool. It does not guarantee mining success or profitability.
 
 Solo mining outcomes are probabilistic, and a rental can lose the entire rental cost if no block is found. Always verify rental pricing, pool configuration, payout details, and execution conditions before spending funds.
+
+## Documentation
+
+[Installation](projects/bch-rental-engine/docs/INSTALL.md)
+
+[Configuration](projects/bch-rental-engine/docs/CONFIGURATION.md)
+
+[Architecture](projects/bch-rental-engine/docs/ARCHITECTURE.md)
+
+[Operations](projects/bch-rental-engine/docs/OPERATIONS.md)
+
+[Deploy to EC2](projects/bch-rental-engine/docs/DEPLOY_EC2.md)
+
+[Roadmap](projects/bch-rental-engine/docs/ROADMAP.md)
+
+[Changelog](projects/bch-rental-engine/docs/CHANGELOG.md)
+
+[Developer Journal](projects/bch-rental-engine/docs/DEVELOPER_JOURNAL.md)
+
+[Decision Log](projects/bch-rental-engine/docs/DECISION_LOG.md)
 
 ## Current Status
 
