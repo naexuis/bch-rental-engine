@@ -4,6 +4,19 @@ A self-hosted decision-support system for evaluating short-window Bitcoin Cash s
 
 The project combines market data, hashpower rental pricing, block probability modeling, risk-adjusted economics, pool routing, historical tracking, Telegram alerts, and a Streamlit dashboard.
 
+## Contents
+
+- [Features](#features)
+- [Project Status](#project-status)
+- [Architecture](#architecture)
+- [Repository Structure](#repository-structure)
+- [Quick Start](#quick-start)
+- [Docker](#docker)
+- [Main Outputs](#main-outputs)
+- [Safety](#safety)
+- [Documentation](#documentation)
+- [Current Status](#current-status)
+
 ## Features
 
 - BCH and BTC market data
@@ -76,6 +89,7 @@ Streamlit Dashboard
 
 ## Repository Structure
 
+```text
 bch-rental-engine/
 ├── config/
 │   ├── .env
@@ -101,6 +115,7 @@ bch-rental-engine/
 ├── requirements.txt
 ├── run_engine.sh
 └── README.md
+```
 
 ## Quick Start
 
@@ -199,23 +214,15 @@ Solo mining outcomes are probabilistic, and a rental can lose the entire rental 
 
 ## Documentation
 
-[Installation](projects/bch-rental-engine/docs/INSTALL.md)
-
-[Configuration](projects/bch-rental-engine/docs/CONFIGURATION.md)
-
-[Architecture](projects/bch-rental-engine/docs/ARCHITECTURE.md)
-
-[Operations](projects/bch-rental-engine/docs/OPERATIONS.md)
-
-[Deploy to EC2](projects/bch-rental-engine/docs/DEPLOY_EC2.md)
-
-[Roadmap](projects/bch-rental-engine/docs/ROADMAP.md)
-
-[Changelog](projects/bch-rental-engine/docs/CHANGELOG.md)
-
-[Developer Journal](projects/bch-rental-engine/docs/DEVELOPER_JOURNAL.md)
-
-[Decision Log](projects/bch-rental-engine/docs/DECISION_LOG.md)
+- 📦 [Installation Guide](docs/INSTALL.md)
+- ⚙️ [Configuration Reference](docs/CONFIGURATION.md)
+- 🏗 [Architecture Guide](docs/ARCHITECTURE.md)
+- 🛠 [Operations Runbook](docs/OPERATIONS.md)
+- ☁️ [Deploy to EC2](docs/DEPLOY_EC2.md)
+- 🗺 [Project Roadmap](docs/ROADMAP.md)
+- 📝 [Changelog](docs/CHANGELOG.md)
+- 📔 [Developer Journal](docs/DEVELOPER_JOURNAL.md)
+- 💡 [Decision Log](docs/DECISION_LOG.md)
 
 ## Current Status
 
