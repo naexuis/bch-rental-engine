@@ -555,12 +555,14 @@ if page == "Dashboard":
     else:
         st.error(f"🔴 Current Recommendation: {recommendation}")
 
-    d1, d2, d3, d4 = st.columns(4)
+    d1, d2, d3 = st.columns(3)
 
-    d1.metric("Opportunity Score", f"{opportunity_score:.1f}/100")
-    d2.metric("Market Regime", market_regime)
-    d3.metric("Action", action)
-    d4.metric("Strike Score", f"{strike_score:.1f}/100")
+    d1.metric("Strike Score", f"{strike_score:.1f}/100")
+    d2.metric("Opportunity Score", f"{opportunity_score:.1f}/100")
+    d3.metric("Market Regime", market_regime)
+
+    st.divider()
+    st.subheader("Decision Drivers")
 
     d5, d6, d7, d8 = st.columns(4)
 
@@ -568,8 +570,6 @@ if page == "Dashboard":
     d6.metric("Risk ROI", f"{risk_roi:.2f}%")
     d7.metric("FVR", f"{fvr:.3f}")
     d8.metric("Rental Premium", f"{premium:+.2f}%")
-
-    st.markdown("#### Why?")
 
     reasons = []
 
