@@ -86,22 +86,76 @@ def summarize_technical_indicators(df: pd.DataFrame) -> dict:
 
     score = max(0.0, min(100.0, score))
 
-    if (
-        close is not None
-        and pd.notna(ema20)
-        and pd.notna(ema50)
-        and close > ema20 > ema50
-    ):
-        trend = "Bullish"
-    elif (
-        close is not None
-        and pd.notna(ema20)
-        and pd.notna(ema50)
-        and close < ema20 < ema50
-    ):
-        trend = "Bearish"
+    if close is None or pd.isna(ema20):
+        trend = "Insufficient Data"
+
+    elif pd.isna(ema50):
+        recent_window = df.tail(min(6, len(df)))
+
+        ema20_slope = (
+            recent_window["ema20"].iloc[-1]
+            - recent_window["ema20"].iloc[0]
+            if recent_window["ema20"].notna().all()
+            else 0.0
+        )
+
+        if close > ema20 and ema20_slope > 0:
+            trend = "Bullish"
+        elif close < ema20 and ema20_slope < 0:
+            trend = "Bearish"
+        else:
+            trend = "Neutral"
+
     else:
-        trend = "Neutral"
+        recent_window = df.tail(min(6, len(df)))
+
+        ema20_slope = (
+            recent_window["ema20"].iloc[-1]
+            - recent_window["ema20"].iloc[0]
+            if recent_window["ema20"].notna().all()
+            else 0.0
+        )
+
+        ema50_slope = (
+            recent_window["ema50"].iloc[-1]
+            - recent_window["ema50"].iloc[0]
+            if recent_window["ema50"].notna().all()
+            else 0.0
+        )
+
+        bullish_signals = 0
+        bearish_signals = 0
+
+        if close > ema20:
+            bullish_signals += 1
+        elif close < ema20:
+            bearish_signals += 1
+
+        if ema20 > ema50:
+            bullish_signals += 1
+        elif ema20 < ema50:
+            bearish_signals += 1
+
+        if ema20_slope > 0:
+            bullish_signals += 1
+        elif ema20_slope < 0:
+            bearish_signals += 1
+
+        if ema50_slope > 0:
+            bullish_signals += 1
+        elif ema50_slope < 0:
+            bearish_signals += 1
+
+        if bullish_signals == 4:
+            trend = "Strong Bullish"
+        elif bullish_signals >= 3:
+            trend = "Bullish"
+        elif bearish_signals == 4:
+            trend = "Strong Bearish"
+        elif bearish_signals >= 3:
+            trend = "Bearish"
+        else:
+            trend = "Neutral"
 
     if pd.isna(rsi14):
         momentum = "Insufficient Data"
