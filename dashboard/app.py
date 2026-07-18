@@ -28,6 +28,160 @@ def safe_num(value, default=0.0):
         return default
     return value
 
+def summarize_technical_indicators(df: pd.DataFrame) -> dict:
+    """
+    Summarize the latest technical state for display in the dashboard.
+    """
+    empty_summary = {
+        "trend": "Insufficient Data",
+        "momentum": "Insufficient Data",
+        "technical_score": 0.0,
+        "close": None,
+        "ema20": None,
+        "ema50": None,
+        "ema200": None,
+        "rsi14": None,
+        "atr14": None,
+    }
+
+    if df.empty:
+        return empty_summary
+
+    valid_rows = df.dropna(subset=["close"])
+
+    if valid_rows.empty:
+        return empty_summary
+
+    latest_row = valid_rows.iloc[-1]
+
+    close = safe_num(latest_row.get("close"), None)
+    ema20 = latest_row.get("ema20")
+    ema50 = latest_row.get("ema50")
+    ema200 = latest_row.get("ema200")
+    rsi14 = latest_row.get("rsi14")
+    atr14 = latest_row.get("atr14")
+
+    score = 50.0
+
+    # Trend scoring
+    if pd.notna(ema20) and close is not None:
+        score += 10 if close > ema20 else -10
+
+    if pd.notna(ema20) and pd.notna(ema50):
+        score += 15 if ema20 > ema50 else -15
+
+    if pd.notna(ema50) and pd.notna(ema200):
+        score += 10 if ema50 > ema200 else -10
+
+    # Momentum scoring
+    if pd.notna(rsi14):
+        if 50 <= rsi14 <= 70:
+            score += 10
+        elif 30 <= rsi14 < 50:
+            score -= 5
+        elif rsi14 > 70:
+            score -= 5
+        elif rsi14 < 30:
+            score += 5
+
+    score = max(0.0, min(100.0, score))
+
+    if close is None or pd.isna(ema20):
+        trend = "Insufficient Data"
+
+    elif pd.isna(ema50):
+        recent_window = df.tail(min(6, len(df)))
+
+        ema20_slope = (
+            recent_window["ema20"].iloc[-1]
+            - recent_window["ema20"].iloc[0]
+            if recent_window["ema20"].notna().all()
+            else 0.0
+        )
+
+        if close > ema20 and ema20_slope > 0:
+            trend = "Bullish"
+        elif close < ema20 and ema20_slope < 0:
+            trend = "Bearish"
+        else:
+            trend = "Neutral"
+
+    else:
+        recent_window = df.tail(min(6, len(df)))
+
+        ema20_slope = (
+            recent_window["ema20"].iloc[-1]
+            - recent_window["ema20"].iloc[0]
+            if recent_window["ema20"].notna().all()
+            else 0.0
+        )
+
+        ema50_slope = (
+            recent_window["ema50"].iloc[-1]
+            - recent_window["ema50"].iloc[0]
+            if recent_window["ema50"].notna().all()
+            else 0.0
+        )
+
+        bullish_signals = 0
+        bearish_signals = 0
+
+        if close > ema20:
+            bullish_signals += 1
+        elif close < ema20:
+            bearish_signals += 1
+
+        if ema20 > ema50:
+            bullish_signals += 1
+        elif ema20 < ema50:
+            bearish_signals += 1
+
+        if ema20_slope > 0:
+            bullish_signals += 1
+        elif ema20_slope < 0:
+            bearish_signals += 1
+
+        if ema50_slope > 0:
+            bullish_signals += 1
+        elif ema50_slope < 0:
+            bearish_signals += 1
+
+        if bullish_signals == 4:
+            trend = "Strong Bullish"
+        elif bullish_signals >= 3:
+            trend = "Bullish"
+        elif bearish_signals == 4:
+            trend = "Strong Bearish"
+        elif bearish_signals >= 3:
+            trend = "Bearish"
+        else:
+            trend = "Neutral"
+
+    if pd.isna(rsi14):
+        momentum = "Insufficient Data"
+    elif rsi14 >= 70:
+        momentum = "Overbought"
+    elif rsi14 <= 30:
+        momentum = "Oversold"
+    elif rsi14 >= 55:
+        momentum = "Positive"
+    elif rsi14 <= 45:
+        momentum = "Negative"
+    else:
+        momentum = "Neutral"
+
+    return {
+        "trend": trend,
+        "momentum": momentum,
+        "technical_score": round(score, 1),
+        "close": close,
+        "ema20": None if pd.isna(ema20) else float(ema20),
+        "ema50": None if pd.isna(ema50) else float(ema50),
+        "ema200": None if pd.isna(ema200) else float(ema200),
+        "rsi14": None if pd.isna(rsi14) else float(rsi14),
+        "atr14": None if pd.isna(atr14) else float(atr14),
+    }
+
 def fmt_large_number(value):
     value = safe_num(value)
 
@@ -200,6 +354,83 @@ def fetch_yfinance_ohlc(ticker: str, period: str, interval: str) -> pd.DataFrame
     )
 
     return df[["time", "open", "high", "low", "close", "volume"]].dropna()
+
+def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add EMA, RSI, ATR, trend, and technical-score fields to OHLC data.
+
+    Expected input columns:
+        time, open, high, low, close, volume
+    """
+    if df.empty:
+        return df.copy()
+
+    result = df.copy().sort_values("time").reset_index(drop=True)
+
+    numeric_columns = ["open", "high", "low", "close", "volume"]
+    for column in numeric_columns:
+        result[column] = pd.to_numeric(result[column], errors="coerce")
+
+    result = result.dropna(subset=["high", "low", "close"])
+
+    # Exponential moving averages
+    result["ema20"] = result["close"].ewm(
+        span=20,
+        adjust=False,
+        min_periods=20,
+    ).mean()
+
+    result["ema50"] = result["close"].ewm(
+        span=50,
+        adjust=False,
+        min_periods=50,
+    ).mean()
+
+    result["ema200"] = result["close"].ewm(
+        span=200,
+        adjust=False,
+        min_periods=200,
+    ).mean()
+
+    # RSI 14 using Wilder-style exponential smoothing
+    delta = result["close"].diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+
+    average_gain = gain.ewm(
+        alpha=1 / 14,
+        adjust=False,
+        min_periods=14,
+    ).mean()
+
+    average_loss = loss.ewm(
+        alpha=1 / 14,
+        adjust=False,
+        min_periods=14,
+    ).mean()
+
+    relative_strength = average_gain / average_loss.replace(0, float("nan"))
+    result["rsi14"] = 100 - (100 / (1 + relative_strength))
+
+    # ATR 14
+    previous_close = result["close"].shift(1)
+
+    true_range = pd.concat(
+        [
+            result["high"] - result["low"],
+            (result["high"] - previous_close).abs(),
+            (result["low"] - previous_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+
+    result["atr14"] = true_range.ewm(
+        alpha=1 / 14,
+        adjust=False,
+        min_periods=14,
+    ).mean()
+
+    return result
 
 def get_candle_settings(range_label: str) -> dict:
     settings = {
@@ -541,6 +772,9 @@ elif page == "Market":
                 candle_settings["left_interval"],
             )
 
+            df_4h = calculate_technical_indicators(df_4h)
+            left_summary = summarize_technical_indicators(df_4h)
+
             if df_4h.empty:
                 st.warning("No left candle data returned.")
             else:
@@ -558,12 +792,86 @@ elif page == "Market":
                         )
                     ]
                 )
+                fig.add_trace(
+                    go.Scatter(
+                        x=df_4h["time"],
+                        y=df_4h["ema20"],
+                        mode="lines",
+                        name="EMA 20",
+                        line=dict(width=1.5),
+                    )
+                )
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=df_4h["time"],
+                        y=df_4h["ema50"],
+                        mode="lines",
+                        name="EMA 50",
+                        line=dict(width=1.5),
+                    )
+                )
+
+                if df_4h["ema200"].notna().any():
+                    fig.add_trace(
+                        go.Scatter(
+                            x=df_4h["time"],
+                            y=df_4h["ema200"],
+                            mode="lines",
+                            name="EMA 200",
+                            line=dict(width=1.2, dash="dot"),
+                        )
+                    )
                 fig.update_layout(
                     height=450,
                     xaxis_rangeslider_visible=False,
                     title=f"{candle_ticker} {candle_settings['left_label']} Candlestick",
                 )
                 st.plotly_chart(fig, use_container_width=True)
+
+                left_metric_1, left_metric_2, left_metric_3, left_metric_4, left_metric_5 = st.columns(5)
+
+                left_metric_1.metric(
+                    "Trend",
+                    left_summary["trend"],
+                )
+
+                left_metric_2.metric(
+                    "Momentum",
+                    left_summary["momentum"],
+                )
+
+                left_metric_3.metric(
+                    "RSI 14",
+                    (
+                        f"{left_summary['rsi14']:.1f}"
+                        if left_summary["rsi14"] is not None
+                        else "N/A"
+                    ),
+                )
+
+                left_atr = left_summary["atr14"]
+
+                if left_atr is None:
+                    left_atr_display = "N/A"
+                elif candle_ticker == "BCH-USD":
+                    left_atr_display = f"${left_atr:,.2f}"
+                else:
+                    left_atr_display = f"{left_atr:.8f} BTC"
+
+                left_metric_4.metric(
+                    "ATR 14",
+                    left_atr_display,
+                )
+
+                left_metric_5.metric(
+                    "Technical Score",
+                    (
+                        f"{left_summary['technical_score']:.0f}/100"
+                        if left_summary["technical_score"] is not None
+                        else "N/A"
+                    ),
+                )
 
         except Exception as e:
             st.warning(f"Unable to load left candles: {e}")
@@ -576,6 +884,9 @@ elif page == "Market":
                 candle_settings["right_period"],
                 candle_settings["right_interval"],
             )
+
+            df_15m = calculate_technical_indicators(df_15m)
+            right_summary = summarize_technical_indicators(df_15m)
 
             if df_15m.empty:
                 st.warning("No right candle data returned.")
@@ -594,12 +905,86 @@ elif page == "Market":
                         )
                     ]
                 )
+                fig.add_trace(
+                    go.Scatter(
+                        x=df_15m["time"],
+                        y=df_15m["ema20"],
+                        mode="lines",
+                        name="EMA 20",
+                        line=dict(width=1.5),
+                    )
+                )
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=df_15m["time"],
+                        y=df_15m["ema50"],
+                        mode="lines",
+                        name="EMA 50",
+                        line=dict(width=1.5),
+                    )
+                )
+
+                if df_15m["ema200"].notna().any():
+                    fig.add_trace(
+                        go.Scatter(
+                            x=df_15m["time"],
+                            y=df_15m["ema200"],
+                            mode="lines",
+                            name="EMA 200",
+                            line=dict(width=1.2, dash="dot"),
+                        )
+                    )
                 fig.update_layout(
                     height=450,
                     xaxis_rangeslider_visible=False,
                     title=f"{candle_ticker} {candle_settings['right_label']} Candlestick",
                 )
                 st.plotly_chart(fig, use_container_width=True)
+
+                right_metric_1, right_metric_2, right_metric_3, right_metric_4, right_metric_5 = st.columns(5)
+
+                right_metric_1.metric(
+                    "Trend",
+                    right_summary["trend"],
+                )
+
+                right_metric_2.metric(
+                    "Momentum",
+                    right_summary["momentum"],
+                )
+
+                right_metric_3.metric(
+                    "RSI 14",
+                    (
+                        f"{right_summary['rsi14']:.1f}"
+                        if right_summary["rsi14"] is not None
+                        else "N/A"
+                    ),
+                )
+
+                right_atr = right_summary["atr14"]
+
+                if right_atr is None:
+                    right_atr_display = "N/A"
+                elif candle_ticker == "BCH-USD":
+                    right_atr_display = f"${right_atr:,.2f}"
+                else:
+                    right_atr_display = f"{right_atr:.8f} BTC"
+
+                right_metric_4.metric(
+                    "ATR 14",
+                    right_atr_display,
+                )
+
+                right_metric_5.metric(
+                    "Technical Score",
+                    (
+                        f"{right_summary['technical_score']:.0f}/100"
+                        if right_summary["technical_score"] is not None
+                        else "N/A"
+                    ),
+                )
 
         except Exception as e:
             st.warning(f"Unable to load right candles: {e}")

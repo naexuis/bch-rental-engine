@@ -22,3 +22,6 @@ state/
 
 # Mac
 .DS_Store
+
+# Dashboard Runtime Settings
+config/dashboard_config_override.json
