@@ -632,7 +632,7 @@ if page == "Dashboard":
     d3.metric("Market Regime", market_regime)
 
     st.divider()
-    st.subheader("Decision Drivers")
+    st.subheader("Key Decision Drivers")
 
     d5, d6, d7, d8 = st.columns(4)
     d5.metric("P(1+ Block)", f"{prob_1plus:.2f}%")
@@ -868,10 +868,10 @@ if page == "Dashboard":
             blockers.append("Hashpower is still priced above fair value.")
 
         if risk_roi < 0:
-            blockers.append("Risk-adjusted ROI is still negative.")
+            blockers.append("Risk-adjusted ROI must improve to at least break-even (0%).")
 
         if prob_1plus < 70:
-            blockers.append("Probability is below the preferred threshold.")
+            blockers.append("Probability must exceed the 70% deployment threshold.")
 
         if not blockers:
             st.success("No major blockers detected.")
