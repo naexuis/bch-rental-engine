@@ -38,7 +38,7 @@ if [[ -z "${CURRENT_BRANCH}" ]]; then
 fi
 
 echo "Fetching updates from origin..."
-git fetch origin "${CURRENT_BRANCH}"
+git fetch --tags origin "${CURRENT_BRANCH}"
 
 LOCAL_COMMIT="$(git rev-parse HEAD)"
 REMOTE_COMMIT="$(git rev-parse "origin/${CURRENT_BRANCH}")"
