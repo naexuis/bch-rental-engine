@@ -546,14 +546,77 @@ if page == "Dashboard":
     premium = safe_num(best.get("premium_discount_pct", 0))
     strike_score = safe_num(best.get("strike_score", 0))
 
+    # Human-readable recommendation title
+    recommendation_title = {
+        "STRONG_RENT": "Excellent Rental Opportunity",
+        "RENT": "Rental Opportunity",
+        "WATCH": "Near Strike Opportunity",
+        "MONITOR": "Continue Monitoring",
+    }.get(recommendation, "Do Not Rent")
+
+    # Operator-facing action derived from the engine recommendation
+    operator_action = {
+        "STRONG_RENT": "RENT NOW",
+        "RENT": "RENT",
+        "WATCH": "WATCH",
+        "MONITOR": "MONITOR",
+        "NEAR STRIKE": "WATCH",
+        "DO_NOT_RENT": "DO NOT RENT",
+    }.get(recommendation, "DO NOT RENT")
+
+    # Human-readable market condition
+    recommendation_title = {
+        "STRONG_RENT": "Excellent Rental Opportunity",
+        "RENT": "Rental Opportunity",
+        "WATCH": "Near Strike Opportunity",
+        "MONITOR": "Continue Monitoring",
+        "NEAR STRIKE": "Near Strike Opportunity",
+        "DO_NOT_RENT": "Unfavorable Rental Conditions",
+    }.get(recommendation, "Unfavorable Rental Conditions")
+
+    # Human-readable operator guidance
+    recommendation_message = {
+        "STRONG_RENT": (
+            "Multiple indicators align. Conditions favor executing a rental."
+        ),
+        "RENT": (
+            "Current conditions support renting hashpower."
+        ),
+        "WATCH": (
+            "Market conditions are approaching the strike threshold. "
+            "Continue monitoring."
+        ),
+        "MONITOR": (
+            "Conditions are improving but do not justify a rental yet."
+        ),
+        "NEAR STRIKE": (
+            "Conditions are close to the strike threshold. "
+            "Continue monitoring before renting."
+        ),
+        "DO_NOT_RENT": (
+            "Current market conditions do not support renting hashpower."
+        ),
+    }.get(
+        recommendation,
+        "Current market conditions do not support renting hashpower.",
+    )
+
     st.subheader("Decision Center")
 
-    if recommendation in ["RENT", "STRONG_RENT"]:
-        st.success(f"🟢 Current Recommendation: {recommendation}")
-    elif recommendation in ["WATCH", "MONITOR"]:
-        st.warning(f"🟡 Current Recommendation: {recommendation}")
+    banner_text = f"""
+    ### {operator_action}
+
+    **Market State:** {recommendation_title}
+
+    {recommendation_message}
+    """
+
+    if operator_action in ["RENT", "RENT NOW"]:
+        st.success(banner_text)
+    elif operator_action in ["WATCH", "MONITOR"]:
+        st.warning(banner_text)
     else:
-        st.error(f"🔴 Current Recommendation: {recommendation}")
+        st.error(banner_text)
 
     d1, d2, d3 = st.columns(3)
 
