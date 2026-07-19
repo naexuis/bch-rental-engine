@@ -8,11 +8,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-IMAGE_NAME="${BCH_DASHBOARD_IMAGE:-bch-rental-dashboard}"
-DOCKERFILE="${BCH_DOCKERFILE:-Dockerfile.dashboard}"
-
+source "${SCRIPT_DIR}/config.sh"
 source "${SCRIPT_DIR}/common.sh"
 source "${SCRIPT_DIR}/docker_helper.sh"
 
