@@ -41,7 +41,7 @@ cd "${PROJECT_DIR}" || exit 1
 
 detect_docker
 
-"${SCRIPT_DIR}/show_version.sh"
+"${SCRIPT_DIR}/show_version.sh" --no-banner
 
 echo -e "${BLUE}Dashboard checks${NC}"
 echo

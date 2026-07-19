@@ -5,23 +5,50 @@
 # Version Information
 ###############################################################################
 
-set -e
+set -euo pipefail
 
-PROJECT_NAME="BCH Rental Engine"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Colors
-GREEN="\033[0;32m"
-BLUE="\033[0;34m"
-NC="\033[0m"
+source "${SCRIPT_DIR}/config.sh"
+source "${SCRIPT_DIR}/common.sh"
 
-echo
-echo "=========================================================="
-echo " ${PROJECT_NAME}"
-echo "=========================================================="
-echo
+SHOW_BANNER=true
 
-echo -e "${BLUE}Branch:${NC}      $(git branch --show-current)"
-echo -e "${BLUE}Commit:${NC}      $(git rev-parse --short HEAD)"
-echo -e "${BLUE}Tag:${NC}         $(git describe --tags --abbrev=0 2>/dev/null || echo "None")"
+if [[ "${1:-}" == "--no-banner" ]]; then
+    SHOW_BANNER=false
+fi
 
+cd "${PROJECT_DIR}"
+
+if [[ "${SHOW_BANNER}" == true ]]; then
+    print_banner "Version Information"
+else
+    echo -e "${BLUE}Version information${NC}"
+    echo
+fi
+
+BRANCH="$(git branch --show-current 2>/dev/null || true)"
+COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo "Unknown")"
+EXACT_TAG="$(git tag --points-at HEAD 2>/dev/null | head -n 1 || true)"
+LATEST_TAG="$(git describe --tags --abbrev=0 HEAD 2>/dev/null || true)"
+
+if [[ -n "${LATEST_TAG}" ]]; then
+    COMMITS_AHEAD="$(git rev-list --count "${LATEST_TAG}..HEAD" 2>/dev/null || echo "Unknown")"
+else
+    COMMITS_AHEAD="Unknown"
+fi
+
+if [[ -n "${EXACT_TAG}" ]]; then
+    VERSION="${EXACT_TAG}"
+elif [[ -n "${LATEST_TAG}" ]]; then
+    VERSION="${LATEST_TAG}+${COMMITS_AHEAD}"
+else
+    VERSION="Unreleased"
+fi
+
+printf '%-18s %s\n' "Version:" "${VERSION}"
+printf '%-18s %s\n' "Branch:" "${BRANCH:-Detached HEAD}"
+printf '%-18s %s\n' "Current Commit:" "${COMMIT}"
+printf '%-18s %s\n' "Latest Release:" "${LATEST_TAG:-None}"
+printf '%-18s %s\n' "Commits Ahead:" "${COMMITS_AHEAD}"
 echo
