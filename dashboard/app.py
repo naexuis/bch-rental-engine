@@ -535,53 +535,52 @@ if page == "Dashboard":
     best = winners.get("best_strike", {}) or {}
     opportunity = state.get("opportunity", {}) or {}
 
-    recommendation = str(best.get("recommendation", state.get("recommendation", "N/A"))).upper()
+    recommendation = str(
+        best.get("recommendation", state.get("recommendation", "N/A"))
+    ).upper()
+    recommendation = recommendation.replace("_", " ")
     market_regime = str(state.get("market_regime", "N/A")).upper()
-    action = str(opportunity.get("action", "N/A")).upper()
 
     opportunity_score = safe_num(opportunity.get("score", 0))
     prob_1plus = safe_num(best.get("prob_1plus", 0)) * 100
     risk_roi = safe_num(best.get("risk_adjusted_roi_pct", 0))
     fvr = safe_num(best.get("fair_value_ratio", 0))
     premium = safe_num(best.get("premium_discount_pct", 0))
-    strike_score = safe_num(best.get("strike_score", 0))
 
-    # Human-readable recommendation title
-    recommendation_title = {
-        "STRONG_RENT": "Excellent Rental Opportunity",
-        "RENT": "Rental Opportunity",
-        "WATCH": "Near Strike Opportunity",
-        "MONITOR": "Continue Monitoring",
-    }.get(recommendation, "Do Not Rent")
+    strike_cost = safe_num(best.get("cost_usd", best.get("budget_usd", 0)))
+    expected_profit = safe_num(best.get("expected_profit_usd", 0))
+    expected_roi = (
+        (expected_profit / strike_cost) * 100
+        if strike_cost > 0
+        else 0.0
+    )
 
-    # Operator-facing action derived from the engine recommendation
+    # Operator-facing action derived from the engine recommendation.
     operator_action = {
         "STRONG_RENT": "RENT NOW",
         "RENT": "RENT",
         "WATCH": "WATCH",
         "MONITOR": "MONITOR",
         "NEAR STRIKE": "WATCH",
-        "DO_NOT_RENT": "DO NOT RENT",
+        "DO NOT RENT": "DO NOT RENT",
     }.get(recommendation, "DO NOT RENT")
 
-    # Human-readable market condition
+    # Human-readable market condition.
     recommendation_title = {
         "STRONG_RENT": "Excellent Rental Opportunity",
         "RENT": "Rental Opportunity",
         "WATCH": "Near Strike Opportunity",
         "MONITOR": "Continue Monitoring",
         "NEAR STRIKE": "Near Strike Opportunity",
-        "DO_NOT_RENT": "Unfavorable Rental Conditions",
+        "DO NOT RENT": "Unfavorable Rental Conditions",
     }.get(recommendation, "Unfavorable Rental Conditions")
 
-    # Human-readable operator guidance
+    # Human-readable operator guidance.
     recommendation_message = {
         "STRONG_RENT": (
             "Multiple indicators align. Conditions favor executing a rental."
         ),
-        "RENT": (
-            "Current conditions support renting hashpower."
-        ),
+        "RENT": "Current conditions support renting hashpower.",
         "WATCH": (
             "Market conditions are approaching the strike threshold. "
             "Continue monitoring."
@@ -593,7 +592,7 @@ if page == "Dashboard":
             "Conditions are close to the strike threshold. "
             "Continue monitoring before renting."
         ),
-        "DO_NOT_RENT": (
+        "DO NOT RENT": (
             "Current market conditions do not support renting hashpower."
         ),
     }.get(
@@ -603,13 +602,11 @@ if page == "Dashboard":
 
     st.subheader("Decision Center")
 
-    banner_text = f"""
-    ### {operator_action}
-
-    **Market State:** {recommendation_title}
-
-    {recommendation_message}
-    """
+    banner_text = (
+        f"### {operator_action}\n\n"
+        f"**Market State:** {recommendation_title}\n\n"
+        f"{recommendation_message}"
+    )
 
     if operator_action in ["RENT", "RENT NOW"]:
         st.success(banner_text)
@@ -618,9 +615,19 @@ if page == "Dashboard":
     else:
         st.error(banner_text)
 
-    d1, d2, d3 = st.columns(3)
+    if opportunity_score >= 90:
+        confidence_label = "Very High"
+    elif opportunity_score >= 75:
+        confidence_label = "High"
+    elif opportunity_score >= 60:
+        confidence_label = "Moderate"
+    elif opportunity_score >= 40:
+        confidence_label = "Low"
+    else:
+        confidence_label = "Very Low"
 
-    d1.metric("Strike Score", f"{strike_score:.1f}/100")
+    d1, d2, d3 = st.columns(3)
+    d1.metric("Confidence", confidence_label)
     d2.metric("Opportunity Score", f"{opportunity_score:.1f}/100")
     d3.metric("Market Regime", market_regime)
 
@@ -628,9 +635,8 @@ if page == "Dashboard":
     st.subheader("Decision Drivers")
 
     d5, d6, d7, d8 = st.columns(4)
-
     d5.metric("P(1+ Block)", f"{prob_1plus:.2f}%")
-    d6.metric("Risk ROI", f"{risk_roi:.2f}%")
+    d6.metric("Risk-Adjusted ROI", f"{risk_roi:.2f}%")
     d7.metric("FVR", f"{fvr:.3f}")
     d8.metric("Rental Premium", f"{premium:+.2f}%")
 
@@ -649,19 +655,93 @@ if page == "Dashboard":
     if risk_roi >= 0:
         reasons.append("✅ Risk-adjusted ROI is positive.")
     else:
-        reasons.append(f"❌ Risk-adjusted ROI is still negative at {risk_roi:.2f}%.")
+        reasons.append(
+            f"❌ Risk-adjusted ROI is still negative at {risk_roi:.2f}%."
+        )
 
     if premium <= 0:
         reasons.append("✅ Rental pricing is at or below break-even fair value.")
     else:
-        reasons.append(f"❌ Rental pricing is still {premium:.2f}% above break-even.")
+        reasons.append(
+            f"❌ Rental pricing is still {premium:.2f}% above break-even."
+        )
 
     for reason in reasons:
         st.write(reason)
 
     st.divider()
+    st.subheader("Recommended Strike")
 
-    st.subheader("Budget Frontier")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Budget", f"${strike_cost:,.0f}")
+    c2.metric(
+        "Hashrate",
+        fmt_hashrate_from_ph(best.get("hashrate_ph", 0)),
+    )
+    c3.metric(
+        "Duration",
+        f"{safe_num(best.get('duration_hours', 0)):.2f} h",
+    )
+
+    c4, c5, c6 = st.columns(3)
+    c4.metric("Success Probability", f"{prob_1plus:.2f}%")
+    c5.metric("Expected ROI", f"{expected_roi:.2f}%")
+    c6.metric("Rental Premium", f"{premium:+.2f}%")
+
+    if operator_action in ["RENT", "RENT NOW"]:
+        execution_plan = (
+            "**Recommended Execution Plan**\n\n"
+            f"Rent approximately **{fmt_hashrate_from_ph(best.get('hashrate_ph', 0))}** "
+            f"for **{safe_num(best.get('duration_hours', 0)):.2f} hours** "
+            f"at a projected cost of **${strike_cost:,.0f}**. "
+            f"The modeled expected profit is **${expected_profit:,.2f}** "
+            f"({expected_roi:.2f}% expected ROI)."
+        )
+
+    elif operator_action == "WATCH":
+        execution_plan = (
+            "**Recommended Execution Plan**\n\n"
+            "Continue monitoring the market. Current conditions are close to a "
+            "rental opportunity.\n\n"
+            f"If conditions improve, the engine would recommend approximately "
+            f"**{fmt_hashrate_from_ph(best.get('hashrate_ph', 0))}** "
+            f"for **{safe_num(best.get('duration_hours', 0)):.2f} hours** "
+            f"at an estimated cost of **${strike_cost:,.0f}**."
+        )
+
+    else:
+        execution_plan = (
+            "**Recommended Execution Plan**\n\n"
+            "No rental is recommended under current market conditions. "
+            "Continue monitoring until the key decision drivers improve."
+        )
+    st.info(execution_plan)
+
+    st.divider()
+    st.subheader("Recommended Pool")
+
+    pool_col1, pool_col2, pool_col3, pool_col4 = st.columns(4)
+    pool_col1.metric(
+        "Pool",
+        recommended_pool.get("pool_name", "N/A"),
+    )
+    pool_col2.metric(
+        "Routing Score",
+        f"{safe_num(recommended_pool.get('routing_score', 0)):.1f}/100",
+    )
+    pool_col3.metric(
+        "Dominance",
+        f"{safe_num(recommended_pool.get('pool_dominance_pct', 0)):.2f}%",
+    )
+    pool_col4.metric(
+        "Existing Pool",
+        fmt_hashrate_from_ph(
+            recommended_pool.get("existing_pool_hashrate_ph", 0)
+        ),
+    )
+
+    st.divider()
+    st.subheader("Alternative Strike Plans")
 
     frontier = state.get("budget_frontier", [])
 
@@ -669,33 +749,72 @@ if page == "Dashboard":
         rows = []
 
         for item in frontier:
-            best = item.get("best_score", {}) or item.get("best_probability", {})
+            frontier_best = (
+                item.get("best_score", {})
+                or item.get("best_probability", {})
+            )
 
             rows.append(
                 {
-                    "budget_usd": safe_num(item.get("budget_usd", best.get("cost_usd", 0))),
-                    "cost_usd": safe_num(best.get("cost_usd", 0)),
-                    "hashrate": fmt_hashrate_from_ph(best.get("hashrate_ph", 0)),
-                    "duration_hours": safe_num(best.get("duration_hours", 0)),
-                    "prob_1plus_pct": safe_num(best.get("prob_1plus", 0)) * 100,
-                    "prob_2plus_pct": safe_num(best.get("prob_2plus", 0)) * 100,
-                    "fvr": safe_num(best.get("fair_value_ratio", 0)),
-                    "risk_roi_pct": safe_num(best.get("risk_adjusted_roi_pct", 0)),
-                    "recommendation": best.get("recommendation", "N/A"),
-                    "source": str(best.get("source", "N/A")).upper(),
+                    "budget_usd": safe_num(
+                        item.get(
+                            "budget_usd",
+                            frontier_best.get("cost_usd", 0),
+                        )
+                    ),
+                    "cost_usd": safe_num(frontier_best.get("cost_usd", 0)),
+                    "hashrate": fmt_hashrate_from_ph(
+                        frontier_best.get("hashrate_ph", 0)
+                    ),
+                    "duration_hours": safe_num(
+                        frontier_best.get("duration_hours", 0)
+                    ),
+                    "prob_1plus_pct": (
+                        safe_num(frontier_best.get("prob_1plus", 0)) * 100
+                    ),
+                    "prob_2plus_pct": (
+                        safe_num(frontier_best.get("prob_2plus", 0)) * 100
+                    ),
+                    "fvr": safe_num(
+                        frontier_best.get("fair_value_ratio", 0)
+                    ),
+                    "risk_roi_pct": safe_num(
+                        frontier_best.get("risk_adjusted_roi_pct", 0)
+                    ),
+                    "recommendation": frontier_best.get(
+                        "recommendation",
+                        "N/A",
+                    ),
+                    "source": str(
+                        frontier_best.get("source", "N/A")
+                    ).upper(),
                 }
             )
 
         frontier_df = pd.DataFrame(rows)
 
         display_frontier_df = frontier_df.copy()
-        display_frontier_df["budget_usd"] = display_frontier_df["budget_usd"].map(lambda x: f"${x:,.0f}")
-        display_frontier_df["cost_usd"] = display_frontier_df["cost_usd"].map(lambda x: f"${x:,.0f}")
-        display_frontier_df["duration_hours"] = display_frontier_df["duration_hours"].map(lambda x: f"{x:.2f}h")
-        display_frontier_df["prob_1plus_pct"] = display_frontier_df["prob_1plus_pct"].map(lambda x: f"{x:.2f}%")
-        display_frontier_df["prob_2plus_pct"] = display_frontier_df["prob_2plus_pct"].map(lambda x: f"{x:.2f}%")
-        display_frontier_df["fvr"] = display_frontier_df["fvr"].map(lambda x: f"{x:.3f}")
-        display_frontier_df["risk_roi_pct"] = display_frontier_df["risk_roi_pct"].map(lambda x: f"{x:.2f}%")
+        display_frontier_df["budget_usd"] = display_frontier_df[
+            "budget_usd"
+        ].map(lambda x: f"${x:,.0f}")
+        display_frontier_df["cost_usd"] = display_frontier_df[
+            "cost_usd"
+        ].map(lambda x: f"${x:,.0f}")
+        display_frontier_df["duration_hours"] = display_frontier_df[
+            "duration_hours"
+        ].map(lambda x: f"{x:.2f}h")
+        display_frontier_df["prob_1plus_pct"] = display_frontier_df[
+            "prob_1plus_pct"
+        ].map(lambda x: f"{x:.2f}%")
+        display_frontier_df["prob_2plus_pct"] = display_frontier_df[
+            "prob_2plus_pct"
+        ].map(lambda x: f"{x:.2f}%")
+        display_frontier_df["fvr"] = display_frontier_df["fvr"].map(
+            lambda x: f"{x:.3f}"
+        )
+        display_frontier_df["risk_roi_pct"] = display_frontier_df[
+            "risk_roi_pct"
+        ].map(lambda x: f"{x:.2f}%")
 
         display_frontier_df = display_frontier_df[
             [
@@ -711,86 +830,70 @@ if page == "Dashboard":
             ]
         ]
 
-        st.dataframe(display_frontier_df, use_container_width=True)
+        with st.expander("View all candidate plans", expanded=False):
+            st.dataframe(display_frontier_df, use_container_width=True)
 
-        chart_df = frontier_df.copy()
-        chart_df["budget_usd"] = chart_df["budget_usd"].round(0)
-        chart_df["prob_1plus_pct"] = chart_df["prob_1plus_pct"].round(2)
+            chart_df = frontier_df.copy()
+            chart_df["budget_usd"] = chart_df["budget_usd"].round(0)
+            chart_df["prob_1plus_pct"] = chart_df[
+                "prob_1plus_pct"
+            ].round(2)
 
-        fig = px.line(
-            chart_df,
-            x="budget_usd",
-            y="prob_1plus_pct",
-            markers=True,
-            labels={
-                "budget_usd": "Budget USD",
-                "prob_1plus_pct": "P(1+ Block) %",
-            },
-        )
-
-        fig.update_traces(
-            hovertemplate="Budget: $%{x:,.0f}<br>P(1+): %{y:.2f}%<extra></extra>"
-        )
-
-        st.plotly_chart(fig, use_container_width=True)
-
+            fig = px.line(
+                chart_df,
+                x="budget_usd",
+                y="prob_1plus_pct",
+                markers=True,
+                labels={
+                    "budget_usd": "Budget USD",
+                    "prob_1plus_pct": "P(1+ Block) %",
+                },
+            )
+            fig.update_traces(
+                hovertemplate=(
+                    "Budget: $%{x:,.0f}<br>"
+                    "P(1+): %{y:.2f}%<extra></extra>"
+                )
+            )
+            st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("No budget frontier data available yet.")
+        st.info("No alternative strike plans are available yet.")
 
     st.divider()
+    with st.expander("Current Blockers", expanded=False):
 
-    st.subheader("Recommended Pool")
+        blockers = []
 
-    pool_col1, pool_col2, pool_col3, pool_col4 = st.columns(4)
+        if fvr < 0.90:
+            blockers.append("Hashpower is still priced above fair value.")
 
-    pool_col1.metric(
-        "Pool",
-        recommended_pool.get("pool_name", "N/A"),
-    )
+        if risk_roi < 0:
+            blockers.append("Risk-adjusted ROI is still negative.")
 
-    pool_col2.metric(
-        "Routing Score",
-        f"{safe_num(recommended_pool.get('routing_score', 0)):.1f}/100",
-    )
+        if prob_1plus < 70:
+            blockers.append("Probability is below the preferred threshold.")
 
-    pool_col3.metric(
-        "Dominance",
-        f"{safe_num(recommended_pool.get('pool_dominance_pct', 0)):.2f}%",
-    )
+        if not blockers:
+            st.success("No major blockers detected.")
+        else:
+            for blocker in blockers:
+                st.error(blocker)
 
-    pool_col4.metric(
-        "Existing Pool",
-        fmt_hashrate_from_ph(recommended_pool.get("existing_pool_hashrate_ph", 0)),
-    )
+    with st.expander("Conditions Needed for a RENT Signal", expanded=False):
 
-    st.divider()
+        cond1, cond2, cond3 = st.columns(3)
+        cond1.metric("FVR Target", ">= 0.90", f"Current: {fvr:.3f}")
+        cond2.metric(
+            "Risk ROI Target",
+            ">= 0%",
+            f"Current: {risk_roi:.2f}%",
+        )
+        cond3.metric(
+            "Probability Target",
+            ">= 70%",
+            f"Current: {prob_1plus:.2f}%",
+        )
 
-    st.subheader("Main Blockers")
-
-    blockers = []
-
-    if fvr < 0.90:
-        blockers.append("Hashpower is still priced above fair value.")
-
-    if risk_roi < 0:
-        blockers.append("Risk-adjusted ROI is still negative.")
-
-    if prob_1plus < 70:
-        blockers.append("Probability is below the preferred threshold.")
-
-    if not blockers:
-        st.success("No major blockers detected.")
-    else:
-        for blocker in blockers:
-            st.error(blocker)
-
-    st.subheader("Conditions Needed to Rent")
-
-    cond1, cond2, cond3 = st.columns(3)
-
-    cond1.metric("FVR Target", ">= 0.90", f"Current: {fvr:.3f}")
-    cond2.metric("Risk ROI Target", ">= 0%", f"Current: {risk_roi:.2f}%")
-    cond3.metric("Probability Target", ">= 70%", f"Current: {prob_1plus:.2f}%")
 
 elif page == "Market":
     st.subheader("Market Overview")
