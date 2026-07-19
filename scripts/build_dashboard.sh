@@ -21,21 +21,7 @@ cd "${PROJECT_DIR}"
 # Docker Detection
 #
 
-if ! docker ps >/dev/null 2>&1; then
-    if command -v sudo >/dev/null 2>&1; then
-        echo -e "${YELLOW}Docker requires elevated privileges.${NC}"
-        echo "Please enter your password if prompted."
-        echo
-        sudo -v
-    fi
-fi
-
-detect_docker
-
-if [[ "${DOCKER_AVAILABLE}" != true ]]; then
-    echo -e "${RED}ERROR:${NC} Docker is not available."
-    exit 1
-fi
+initialize_docker
 
 echo -e "${BLUE}Docker Command:${NC} ${DOCKER}"
 echo -e "${BLUE}Image Name:${NC}     ${IMAGE_NAME}"

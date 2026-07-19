@@ -8,11 +8,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-CONTAINER_NAME="${BCH_DASHBOARD_CONTAINER:-bch-rental-dashboard}"
-DASHBOARD_URL="${BCH_DASHBOARD_URL:-http://localhost:8501}"
-
+source "${SCRIPT_DIR}/config.sh"
 source "${SCRIPT_DIR}/common.sh"
 source "${SCRIPT_DIR}/docker_helper.sh"
 
@@ -20,24 +17,7 @@ print_banner "Restart Dashboard"
 
 cd "${PROJECT_DIR}"
 
-# Docker on Umbrel requires sudo. Refresh the user's sudo credentials when
-# direct Docker access is unavailable.
-if ! docker ps >/dev/null 2>&1; then
-    if command -v sudo >/dev/null 2>&1; then
-        echo -e "${YELLOW}Docker requires elevated privileges.${NC}"
-        echo "Please enter your password if prompted."
-        echo
-        sudo -v
-    fi
-fi
-
-detect_docker
-
-if [[ "${DOCKER_AVAILABLE}" != true ]]; then
-    echo -e "${RED}ERROR:${NC} Docker is not available."
-    echo "Confirm that Docker is installed and that you have permission to use it."
-    exit 1
-fi
+initialize_docker
 
 echo -e "${BLUE}Docker command:${NC} ${DOCKER}"
 echo -e "${BLUE}Container:${NC}      ${CONTAINER_NAME}"
