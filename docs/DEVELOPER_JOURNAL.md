@@ -1,6 +1,6 @@
 # Developer Journal
 
-The Developer Journal is a chronological record of the development of the BCH Solo Rental Strike Engine.
+The Developer Journal is a chronological record of the development of the BCH Rental Engine.
 
 Unlike the changelog, which records software changes, or the Decision Log, which records architectural decisions, this journal captures the thought process behind the project.
 
@@ -298,7 +298,7 @@ If a proposed feature does not improve one of these areas, it should be carefull
 
 # Looking Ahead
 
-The BCH Solo Rental Strike Engine has grown from a small experimental script into a modular analytics platform.
+The BCH Rental Engine has grown from a small experimental script into a modular analytics platform.
 
 Future development will continue to focus on:
 

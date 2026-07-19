@@ -1,6 +1,6 @@
 # Deploy to AWS EC2
 
-This guide describes how to deploy the BCH Solo Rental Strike Engine to an Amazon EC2 instance.
+This guide describes how to deploy the BCH Rental Engine to an Amazon EC2 instance.
 
 Although this guide focuses on AWS EC2, the same process applies to most Linux virtual machines, including:
 
@@ -488,7 +488,7 @@ After deployment, verify:
 - ✅ Cron job installed
 - ✅ Backups configured
 
-If every item above is complete, the BCH Solo Rental Strike Engine is fully operational on AWS EC2.
+If every item above is complete, the BCH Rental Engine is fully operational on AWS EC2.
 
 ---
 

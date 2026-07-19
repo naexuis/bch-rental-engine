@@ -1,6 +1,6 @@
 # Operations Runbook
 
-The Operations Runbook describes the day-to-day administration of the BCH Solo Rental Strike Engine.
+The Operations Runbook describes the day-to-day administration of the BCH Rental Engine.
 
 This document is intended for anyone responsible for operating, monitoring, maintaining, or updating the system.
 

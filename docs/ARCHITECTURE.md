@@ -1,6 +1,6 @@
 # Architecture Guide
 
-The BCH Solo Rental Strike Engine is a modular decision-support platform designed to evaluate short-duration Bitcoin Cash solo mining opportunities.
+The BCH Rental Engine is a modular decision-support platform designed to evaluate short-duration Bitcoin Cash solo mining opportunities.
 
 Rather than acting as an automated trading or mining system, the engine continuously analyzes the mining market, estimates expected outcomes under thousands of potential rental scenarios, and recommends whether a rental opportunity is economically attractive.
 

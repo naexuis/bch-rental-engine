@@ -1,6 +1,6 @@
 # Decision Log
 
-The Decision Log records significant architectural and engineering decisions made throughout the development of the BCH Solo Rental Strike Engine.
+The Decision Log records significant architectural and engineering decisions made throughout the development of the BCH Rental Engine.
 
 Unlike the changelog, which records **what** changed, this document explains **why** those decisions were made.
 

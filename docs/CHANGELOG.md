@@ -1,8 +1,8 @@
 # Changelog
 
-All notable changes to the BCH Solo Rental Strike Engine are documented in this file.
+All notable changes to the BCH Rental Engine are documented in this file.
 
-The format is based on **Keep a Changelog**, and the project follows **Semantic Versioning** where practical.
+The project follows the principles of **Keep a Changelog** and **Semantic Versioning (SemVer)**.
 
 ---
 
@@ -10,15 +10,133 @@ The format is based on **Keep a Changelog**, and the project follows **Semantic 
 
 ## Added
 
-- Placeholder for future features.
+- Deployment & Operations (v2.1) development.
+
+## Planned
+
+### v2.1 — Deployment & Operations
+
+- One-command dashboard deployment
+- One-command dashboard update
+- One-command dashboard restart
+- Dashboard health checks
+- Automatic Docker rebuild
+- Deployment verification
+- Version information within the dashboard
+- Build metadata display
+
+---
+
+# [v2.0.1] - 2026-07-19
+
+## Overview
+
+Version 2.0.1 is the first patch release following the Dashboard V2 launch.
+
+This release focused on final dashboard polish, recommendation messaging improvements, version tagging, and production deployment.
+
+---
 
 ## Changed
 
-- Placeholder for future improvements.
+### Dashboard
+
+- Refined dashboard labels for improved readability.
+- Improved recommendation messaging.
+- Increased consistency across recommendation terminology.
+- Final UI polish for the Dashboard V2 Operator Console.
+
+---
+
+## Operational
+
+- Tagged production release as **v2.0.1**.
+- Updated GitHub release history.
+- Production deployment to Umbrel completed.
+
+---
 
 ## Fixed
 
-- Placeholder for future bug fixes.
+- Minor dashboard wording inconsistencies.
+
+---
+
+# [v2.0.0] - 2026-07-19
+
+## Overview
+
+Version 2.0.0 represents the completion of Dashboard V2 and marks the project's transition from a prototype into a polished operational decision platform.
+
+The dashboard was completely redesigned around an operator-first workflow.
+
+---
+
+## Added
+
+### Dashboard
+
+- Decision Center
+- Operator Action banner
+- Decision Drivers
+- Recommended Strike
+- Recommended Pool
+- Alternative Strike Plans
+- Current Blockers
+- Conditions Needed for RENT
+- Confidence scoring
+- Improved recommendation explanations
+- Simplified navigation
+- Expandable advanced analysis sections
+
+---
+
+### User Experience
+
+- Operator-first dashboard workflow
+- Improved recommendation hierarchy
+- Clear separation between recommendation and market state
+- Improved execution plan messaging
+
+---
+
+### Development
+
+- Dashboard V2 design document
+- Dashboard wireframe
+- Feature branch workflow
+- Improved Git workflow
+- Semantic version tagging
+
+---
+
+### Deployment
+
+- Docker deployment improvements
+- Umbrel production deployment
+- Production release tagging
+
+---
+
+## Changed
+
+- Complete dashboard redesign.
+- Improved recommendation workflow.
+- Reorganized dashboard layout.
+- Simplified navigation.
+- Reduced dashboard complexity.
+- Improved readability.
+- Improved recommendation consistency.
+
+---
+
+## Fixed
+
+- Recommendation banner behavior.
+- Dashboard layout inconsistencies.
+- Opportunity score presentation.
+- Recommendation mapping.
+- Multiple UI polish issues.
 
 ---
 
@@ -26,106 +144,63 @@ The format is based on **Keep a Changelog**, and the project follows **Semantic 
 
 ## Overview
 
-Version 1.1.0 represents the first fully documented release of the BCH Solo Rental Strike Engine.
+Version 1.1.0 focused on improving visualization, documentation, deployment, and operational reliability.
 
-This release focused on improving usability, visualization, deployment, operational reliability, and long-term maintainability.
+### Added
 
----
+#### Dashboard
 
-## Added
-
-### Dashboard
-
-- Decision Center redesign
 - Historical Performance page
 - Interactive BCH candlestick charts
 - Multiple market time ranges
-    - 24 Hours
-    - 3 Days
-    - 7 Days
-    - 30 Days
-    - 1 Year
-- Improved market overview
+- Market overview improvements
 - Pool routing visualization
-- Human-readable market metrics
-- Opportunity score display
-- Market regime display
 
----
+#### Engine
 
-### Engine
-
-- Pool routing recommendation engine
 - Opportunity scoring
 - Market regime classification
 - Historical SQLite database
-- Historical recommendation recording
-- Improved recommendation summaries
+- Recommendation history recording
 
----
-
-### Operational
+#### Operational
 
 - Automatic JSONL log rotation
-- Configurable log size limits
-- Configurable log backup count
-- Improved operational logging
+- Configurable logging
 - SQLite history storage
 
----
+#### Deployment
 
-### Deployment
-
-- Docker dashboard deployment
-- Umbrel deployment support
+- Docker deployment
+- Umbrel deployment
 - AWS EC2 deployment documentation
-- Portable Linux deployment support
 
----
-
-### Documentation
-
-Added comprehensive project documentation including:
+#### Documentation
 
 - README
 - Installation Guide
 - Configuration Guide
 - Architecture Guide
 - Operations Runbook
-- EC2 Deployment Guide
-- Decision Log
 - Developer Journal
-- Project Roadmap
+- Roadmap
 
 ---
 
 ## Changed
 
-- Dashboard layout redesigned.
-- Decision workflow simplified.
-- Market metrics displayed using readable units.
-- Documentation structure standardized.
-- Repository organization improved.
+- Dashboard layout improvements.
+- Documentation organization.
+- Repository structure.
 
 ---
 
 ## Fixed
 
-- Pool routing display issues.
-- Dashboard rendering improvements.
-- Historical dashboard loading issues.
-- Improved JSON parsing.
-- Improved operational stability.
-- Reduced long-term log growth through automatic rotation.
-
----
-
-## Performance
-
-- Reduced dashboard complexity.
-- Improved dashboard responsiveness.
-- Improved operational reliability.
-- Improved long-term maintainability.
+- Dashboard rendering.
+- Pool routing display.
+- JSON parsing.
+- Long-term log growth.
 
 ---
 
@@ -133,74 +208,46 @@ Added comprehensive project documentation including:
 
 ## Overview
 
-Version 1.0.0 represents the first production-ready release of the BCH Solo Rental Strike Engine.
+Initial production-ready release.
 
-The core optimization engine was completed along with the initial dashboard and deployment architecture.
+### Added
 
----
-
-## Added
-
-### Core Engine
+#### Core Engine
 
 - BCH market data collection
-- BCH difficulty tracking
+- Difficulty tracking
 - Network hashrate estimation
-- Braiins hashpower support
-- MiningRigRentals support
-- Budget optimization
-- Hashrate optimization
-- Strike evaluation engine
-- Poisson probability modeling
-- Expected revenue calculations
-- Expected profit calculations
+- Braiins integration
+- MiningRigRentals integration
+- Strike optimization
+- Poisson probability engine
+- Expected revenue/profit calculations
 - ROI calculations
 - Risk-adjusted ROI
 - Fair Value Ratio (FVR)
-- Strike grading
 - Recommendation engine
 
----
-
-### Dashboard
+#### Dashboard
 
 - Initial Streamlit dashboard
 - Market overview
 - Strike analysis
 - Pool routing
-- Historical visualization
 
----
-
-### Data Storage
+#### Storage
 
 - JSON state output
-- SQLite historical database
+- SQLite history
 - JSONL operational logs
 
----
+#### Notifications
 
-### Notifications
+- Telegram alerts
 
-- Telegram alert support
+#### Deployment
 
----
-
-### Deployment
-
-- Docker dashboard
+- Docker deployment
 - Umbrel deployment
-
----
-
-## Initial Architecture
-
-The project architecture was established around four primary components:
-
-- Optimization Engine
-- JSON State Output
-- SQLite History
-- Streamlit Dashboard
 
 ---
 
@@ -208,86 +255,97 @@ The project architecture was established around four primary components:
 
 | Version | Status | Description |
 |----------|--------|-------------|
-| v1.1.0 | Current | Dashboard enhancements, documentation, candlestick charts, log rotation |
+| v2.0.1 | Current | Dashboard V2 polish and production release |
+| v2.0.0 | Stable | Dashboard V2 Operator Console |
+| v1.1.0 | Stable | Dashboard enhancements and documentation |
 | v1.0.0 | Stable | Initial production release |
 
 ---
 
-# Upgrade Notes
+# Roadmap
 
-## Upgrading from v1.0.0 to v1.1.0
+## v2.1 — Deployment & Operations
 
-Recommended steps:
-
-1. Pull the latest repository.
-2. Rebuild the Docker dashboard image.
-3. Restart the dashboard container.
-4. Review the updated documentation.
-5. Verify the SQLite history database.
-6. Verify candlestick charts are loading correctly.
-7. Verify automatic log rotation is functioning.
-
-No database migration is required.
-
-Existing SQLite history files remain fully compatible.
+- One-command deployment
+- Deployment automation
+- Health monitoring
+- Version display
+- Build metadata
 
 ---
 
-# Future Releases
+## v2.2 — Recommendation History
 
-The following features are currently planned for future releases.
-
-## v1.2.x
-
-- Technical Analysis Engine
-- RSI
-- MACD
-- Bollinger Bands
-- Moving Averages
-- Dashboard indicator overlays
+- Recommendation timeline
+- Historical analytics
+- Recommendation stability
+- Export functionality
 
 ---
 
-## v1.3.x
+## v2.3 — Notifications
 
-- Historical strategy backtesting
-- Performance analytics
-- Historical recommendation explorer
-
----
-
-## v1.4.x
-
-- Dashboard settings editor
-- Automated scheduling improvements
-- Additional notification channels
+- Telegram alerts
+- Recommendation change alerts
+- Threshold notifications
+- Daily and weekly summaries
 
 ---
 
-## v2.0
+## v2.4 — Scenario Simulator
 
-- AI-assisted decision support
-- Multi-coin architecture
-- REST API
-- Advanced forecasting
-- Machine learning enhancements
-- Automated rental execution
+- BCH price sensitivity
+- Rental price sensitivity
+- Difficulty sensitivity
+- ROI simulation
+- Interactive "What If?" analysis
+
+---
+
+## v2.5 — Recommendation Explainability
+
+- Decision factor contributions
+- Confidence explanation
+- Recommendation comparison
+- Threshold analysis
+
+---
+
+## v3.0 — Multi-Coin Rental Platform
+
+- Shared engine framework
+- Pluggable coin architecture
+- BCH support
+- BTC support
+- DGB support
+- Cross-coin comparison dashboard
+
+---
+
+## v4.0 — Umbrel Community App
+
+- Native Umbrel application
+- One-click installation
+- Configuration wizard
+- Automatic updates
+- Comprehensive documentation
+- Community release
 
 ---
 
 # Release Philosophy
 
-The project follows a conservative release strategy.
+The BCH Rental Engine follows a conservative release strategy.
 
-- Major versions introduce significant architectural changes.
-- Minor versions add substantial new functionality while maintaining compatibility.
-- Patch versions focus on bug fixes, stability improvements, and documentation updates.
+- **Major versions** introduce significant architectural or platform changes.
+- **Minor versions** introduce new capabilities while maintaining compatibility.
+- **Patch versions** focus on stability, usability, bug fixes, and documentation.
 
-Every release aims to improve one or more of the following:
+Each release strives to improve one or more of the following:
 
 - Explainability
 - Reliability
 - Performance
 - Maintainability
-- Portability
-- User experience
+- User Experience
+- Operational Excellence

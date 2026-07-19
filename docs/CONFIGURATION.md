@@ -1,6 +1,6 @@
 # Configuration Reference
 
-This document describes every configuration option available in the BCH Solo Rental Strike Engine.
+This document describes every configuration option available in the BCH Rental Engine.
 
 The engine is configured primarily through environment variables loaded from the `config/.env` file. Optional JSON configuration files may also be used for dashboard customization and future engine extensions.
 

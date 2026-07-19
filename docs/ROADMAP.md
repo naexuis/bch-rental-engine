@@ -1,6 +1,6 @@
 # Project Roadmap
 
-The BCH Solo Rental Strike Engine is an actively evolving decision-support platform for evaluating Bitcoin Cash solo mining opportunities.
+The BCH Rental Engine is an actively evolving decision-support platform for evaluating Bitcoin Cash solo mining opportunities.
 
 This roadmap outlines the planned direction of the project over the coming releases.
 
@@ -436,7 +436,7 @@ The project will be considered successful if it:
 
 # Looking Ahead
 
-The BCH Solo Rental Strike Engine has evolved from a simple probability calculator into a comprehensive mining analytics platform.
+The BCH Rental Engine has evolved from a simple probability calculator into a comprehensive mining analytics platform.
 
 Future development will continue to focus on:
 

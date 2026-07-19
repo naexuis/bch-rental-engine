@@ -1,6 +1,6 @@
 # Installation Guide
 
-This guide walks through installing the BCH Solo Rental Strike Engine on a brand-new Linux server.
+This guide walks through installing the BCH Rental Engine on a brand-new Linux server.
 
 The engine has been developed and tested on Ubuntu-based systems and Umbrel OS, but it is designed to be portable to any modern Linux distribution, cloud virtual machine (AWS EC2, Azure, DigitalOcean, Vultr, Linode, etc.), or local workstation.
 
@@ -10,7 +10,7 @@ Estimated installation time: **15–30 minutes**
 
 # 1. Supported Operating Systems
 
-The BCH Solo Rental Strike Engine has been tested on:
+The BCH Rental Engine has been tested on:
 
 | Operating System | Status |
 |------------------|--------|
@@ -480,7 +480,7 @@ After installation, verify the following:
 - ✅ Telegram alerts (optional) working
 - ✅ Docker container starts successfully (optional)
 
-If every item above is complete, the BCH Solo Rental Strike Engine is fully installed and ready for use.
+If every item above is complete, the BCH Rental Engine is fully installed and ready for use.
 
 # Next Steps
 
