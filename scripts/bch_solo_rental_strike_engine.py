@@ -1868,7 +1868,7 @@ def write_history_row(
         )
         conn.commit()
 
-def get_latest_operator_action() -> Optional[str]:
+def get_latest_opportunity_action() -> Optional[str]:
     """
     Return the latest Opportunity Action stored in history.
 
