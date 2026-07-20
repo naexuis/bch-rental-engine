@@ -1642,6 +1642,54 @@ def write_latest_state(path: Path, record: Dict[str, Any]) -> None:
         json.dump(record, f, indent=2, default=str, sort_keys=True)
     tmp.replace(path)
 
+VALID_OPERATOR_ACTIONS = {
+    "RENT",
+    "WATCH",
+    "DO NOT RENT",
+}
+
+
+def normalize_operator_action(action: Optional[str]) -> str:
+    """
+    Normalize an engine action into a canonical operator recommendation.
+
+    Canonical values:
+        RENT
+        WATCH
+        DO NOT RENT
+        UNKNOWN
+    """
+    if action is None:
+        return "UNKNOWN"
+
+    normalized = str(action).strip().upper()
+    normalized = normalized.replace("_", " ").replace("-", " ")
+    normalized = " ".join(normalized.split())
+
+    if normalized in VALID_OPERATOR_ACTIONS:
+        return normalized
+
+    return "UNKNOWN"
+
+
+def recommendation_changed(
+    previous_action: Optional[str],
+    current_action: Optional[str],
+) -> bool:
+    """
+    Return True only when two known operator actions differ.
+
+    A missing or unknown previous action does not count as a transition,
+    which prevents the first history row from being treated as a change.
+    """
+    previous = normalize_operator_action(previous_action)
+    current = normalize_operator_action(current_action)
+
+    if previous == "UNKNOWN" or current == "UNKNOWN":
+        return False
+
+    return previous != current
+
 def init_history_db() -> None:
     with sqlite3.connect(HISTORY_DB_PATH) as conn:
         conn.execute("""
