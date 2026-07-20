@@ -6,6 +6,29 @@ This document is intended for anyone responsible for operating, monitoring, main
 
 ---
 
+## Standard Umbrel Update Workflow
+
+Use the following command for normal dashboard updates:
+
+```bash
+cd ~/bch_rental_engine
+./scripts/update_dashboard.sh
+```
+
+The update script will:
+
+1. Verify that the Git working tree is clean.
+2. Fetch the latest branch and release tags.
+3. Pull updates using fast-forward-only mode.
+4. Build the dashboard Docker image.
+5. Replace the existing dashboard container.
+6. Wait for the dashboard to become available.
+7. Run the dashboard health check.
+
+Manual Docker commands should not be required during normal updates.
+
+---
+
 # Daily Health Check
 
 A normal daily health check should take less than two minutes.

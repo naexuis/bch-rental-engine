@@ -251,6 +251,52 @@ Initial production-ready release.
 
 ---
 
+# [v2.1.0] - 2026-07-19
+
+## Overview
+
+Version 2.1.0 introduces the BCH Rental Engine Operations Toolkit.
+
+This release replaces the manual Docker deployment process with reusable operational scripts for building, deploying, restarting, updating, checking, and versioning the dashboard.
+
+---
+
+## Added
+
+### Operations Toolkit
+
+- Shared shell utilities in `scripts/common.sh`
+- Centralized deployment configuration in `scripts/config.sh`
+- Environment-aware Docker detection in `scripts/docker_helper.sh`
+- Dashboard image build automation
+- Dashboard deployment automation
+- Dashboard restart automation
+- One-command dashboard update workflow
+- Dashboard health checks
+- Git version and release reporting
+
+### Deployment
+
+- Automatic Docker image verification
+- Automatic existing-container replacement
+- Dashboard availability polling after deployment
+- Post-deployment health verification
+- Support for environments requiring `sudo docker`
+- Automatic Git tag retrieval during updates
+
+---
+
+## Changed
+
+- Replaced the manual Umbrel deployment workflow with:
+
+```bash
+cd ~/bch_rental_engine
+./scripts/update_dashboard.sh
+```
+
+---
+
 # Version History
 
 | Version | Status | Description |
@@ -349,3 +395,24 @@ Each release strives to improve one or more of the following:
 - Maintainability
 - User Experience
 - Operational Excellence
+
+Update the Version History table so `v2.1.0` is Current.
+
+## 2. Update `docs/ROADMAP.md`
+
+Mark v2.1 complete:
+
+```markdown
+## v2.1 — Deployment & Operations
+
+**Status: Complete**
+
+- [x] Shared operations framework
+- [x] Centralized deployment configuration
+- [x] Environment-aware Docker access
+- [x] Dashboard image build automation
+- [x] Dashboard deployment automation
+- [x] Dashboard restart automation
+- [x] One-command dashboard update
+- [x] Dashboard health checks
+- [x] Version and release reporting
