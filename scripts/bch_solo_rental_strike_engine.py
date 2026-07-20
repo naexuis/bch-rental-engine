@@ -1868,6 +1868,37 @@ def write_history_row(
         )
         conn.commit()
 
+def get_latest_operator_action() -> Optional[str]:
+    """
+    Return the latest Opportunity Action stored in history.
+
+    Returns:
+        The latest opportunity_action value, or None if no history exists.
+
+    Examples:
+        STRIKE_NOW
+        STRONG_WATCH
+        WATCH
+        WEAK_WATCH
+        WAIT
+    """
+    init_history_db()
+
+    with sqlite3.connect(HISTORY_DB_PATH) as conn:
+        row = conn.execute(
+            """
+            SELECT opportunity_action
+            FROM run_history
+            ORDER BY id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+
+    if row is None:
+        return None
+
+    return row[0]
+
 def get_history_trends() -> Dict[str, Any]:
     init_history_db()
 
