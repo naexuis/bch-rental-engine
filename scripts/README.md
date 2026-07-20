@@ -49,3 +49,20 @@ Creates a backup of:
 - SQLite database
 
 before upgrades.
+
+### Update the Dashboard on Umbrel
+
+```bash
+cd ~/bch_rental_engine
+./scripts/update_dashboard.sh
+```
+
+## 5. Review the changes
+
+Run:
+
+```bash
+git diff --check
+git diff --stat
+git status
+```
