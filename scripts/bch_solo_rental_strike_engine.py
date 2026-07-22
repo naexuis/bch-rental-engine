@@ -1690,6 +1690,40 @@ def recommendation_changed(
 
     return previous != current
 
+VALID_OPPORTUNITY_ACTIONS = {
+    "STRIKE_NOW",
+    "STRONG_WATCH",
+    "WATCH",
+    "WEAK_WATCH",
+    "WAIT",
+}
+
+
+def normalize_opportunity_action(action: Optional[str]) -> str:
+    """
+    Normalize an engine opportunity action into its canonical value.
+
+    Canonical values:
+        STRIKE_NOW
+        STRONG_WATCH
+        WATCH
+        WEAK_WATCH
+        WAIT
+        UNKNOWN
+    """
+    if action is None:
+        return "UNKNOWN"
+
+    normalized = str(action).strip().upper()
+    normalized = normalized.replace("-", "_").replace(" ", "_")
+    normalized = "_".join(part for part in normalized.split("_") if part)
+
+    if normalized in VALID_OPPORTUNITY_ACTIONS:
+        return normalized
+
+    return "UNKNOWN"
+
+
 def init_history_db() -> None:
     with sqlite3.connect(HISTORY_DB_PATH) as conn:
         conn.execute("""
