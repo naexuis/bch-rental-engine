@@ -1,6 +1,7 @@
 from scripts.bch_solo_rental_strike_engine import (
     normalize_operator_action,
     normalize_opportunity_action,
+    opportunity_action_changed,
     recommendation_changed,
 )
 
@@ -31,6 +32,7 @@ def test_recommendation_changed_returns_false_without_previous_action():
     assert recommendation_changed(None, "WATCH") is False
     assert recommendation_changed("", "WATCH") is False
 
+
 def test_normalize_opportunity_action():
     assert normalize_opportunity_action("strike_now") == "STRIKE_NOW"
     assert normalize_opportunity_action(" STRONG WATCH ") == "STRONG_WATCH"
@@ -39,8 +41,23 @@ def test_normalize_opportunity_action():
     assert normalize_opportunity_action("wait") == "WAIT"
 
 
-
 def test_normalize_opportunity_action_handles_missing_or_invalid_values():
     assert normalize_opportunity_action(None) == "UNKNOWN"
     assert normalize_opportunity_action("") == "UNKNOWN"
     assert normalize_opportunity_action("RENT") == "UNKNOWN"
+
+def test_opportunity_action_changed_returns_false_for_same_action():
+    assert opportunity_action_changed("WATCH", "WATCH") is False
+    assert opportunity_action_changed("strong_watch", " STRONG WATCH ") is False
+
+
+def test_opportunity_action_changed_returns_true_for_transition():
+    assert opportunity_action_changed("WATCH", "STRONG_WATCH") is True
+    assert opportunity_action_changed("WEAK_WATCH", "WAIT") is True
+
+
+def test_opportunity_action_changed_returns_false_for_missing_or_invalid_action():
+    assert opportunity_action_changed(None, "WATCH") is False
+    assert opportunity_action_changed("", "WATCH") is False
+    assert opportunity_action_changed("RENT", "WATCH") is False
+    assert opportunity_action_changed("WATCH", "RENT") is False

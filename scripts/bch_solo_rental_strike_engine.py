@@ -1724,6 +1724,24 @@ def normalize_opportunity_action(action: Optional[str]) -> str:
     return "UNKNOWN"
 
 
+def opportunity_action_changed(
+    previous_action: Optional[str],
+    current_action: Optional[str],
+) -> bool:
+    """
+    Return True only when two known opportunity actions differ.
+
+    A missing or unknown previous action does not count as a transition,
+    which prevents the first history row from being treated as a change.
+    """
+    previous = normalize_opportunity_action(previous_action)
+    current = normalize_opportunity_action(current_action)
+
+    if previous == "UNKNOWN" or current == "UNKNOWN":
+        return False
+
+    return previous != current
+
 def init_history_db() -> None:
     with sqlite3.connect(HISTORY_DB_PATH) as conn:
         conn.execute("""
