@@ -2075,6 +2075,13 @@ def run_engine() -> Dict[str, Any]:
         market_regime=market_regime,
     )
 
+    opportunity["previous_action"] = get_latest_opportunity_action()
+
+    opportunity["action_changed"] = opportunity_action_changed(
+        opportunity["previous_action"],
+        opportunity["action"],
+    )
+
     write_history_row(
         market=market,
         sources=sources,
