@@ -1502,6 +1502,31 @@ def should_alert(best: StrikeScenario, force: bool = False) -> bool:
 
     return best.alert_tier in {"DEPLOY_NOW", "STRONG_RENT"}
 
+
+def build_opportunity_history_section(
+    opportunity: Dict[str, Any],
+) -> str:
+    """
+    Build a concise summary of the current and previous Opportunity Actions.
+    """
+    previous_action = opportunity.get("previous_action")
+    current_action = opportunity.get("action", "UNKNOWN")
+    action_changed = bool(opportunity.get("action_changed"))
+
+    if previous_action is None:
+        status = "Initial Run"
+        previous_display = "None"
+    else:
+        status = "Changed" if action_changed else "Unchanged"
+        previous_display = str(previous_action)
+
+    return f"""Opportunity History
+
+• Previous Action: {previous_display}
+• Current Action: {current_action}
+• Status: {status}"""
+
+
 def build_interpretation_text(
     best: StrikeScenario,
     market_regime: str,
