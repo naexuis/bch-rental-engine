@@ -1599,10 +1599,14 @@ def build_interpretation_text(
     else:
         headline = "The engine recommends waiting."
 
+    opportunity_history = build_opportunity_history_section(opportunity)
+
     return f"""Recommendation: {best.recommendation}
 
 Summary:
 {headline}
+
+{opportunity_history}
 
 Why:
 {blockers_text}
