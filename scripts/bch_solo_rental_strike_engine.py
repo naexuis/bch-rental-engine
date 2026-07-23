@@ -2151,6 +2151,11 @@ def run_engine() -> Dict[str, Any]:
         opportunity["action"],
     )
 
+    opportunity["change_type"] = classify_opportunity_action_change(
+        opportunity["previous_action"],
+        opportunity["action"],
+    )
+
     write_history_row(
         market=market,
         sources=sources,
