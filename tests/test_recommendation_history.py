@@ -1,4 +1,5 @@
 from scripts.bch_solo_rental_strike_engine import (
+    classify_opportunity_action_change,
     normalize_operator_action,
     normalize_opportunity_action,
     opportunity_action_changed,
@@ -61,3 +62,54 @@ def test_opportunity_action_changed_returns_false_for_missing_or_invalid_action(
     assert opportunity_action_changed("", "WATCH") is False
     assert opportunity_action_changed("RENT", "WATCH") is False
     assert opportunity_action_changed("WATCH", "RENT") is False
+
+
+def test_classify_opportunity_action_change_returns_upgrade():
+    assert (
+        classify_opportunity_action_change("WAIT", "WEAK_WATCH")
+        == "UPGRADE"
+    )
+    assert (
+        classify_opportunity_action_change("WATCH", "STRIKE_NOW")
+        == "UPGRADE"
+    )
+
+
+def test_classify_opportunity_action_change_returns_downgrade():
+    assert (
+        classify_opportunity_action_change("STRIKE_NOW", "STRONG_WATCH")
+        == "DOWNGRADE"
+    )
+    assert (
+        classify_opportunity_action_change("WATCH", "WAIT")
+        == "DOWNGRADE"
+    )
+
+
+def test_classify_opportunity_action_change_returns_unchanged():
+    assert (
+        classify_opportunity_action_change("WATCH", "WATCH")
+        == "UNCHANGED"
+    )
+    assert (
+        classify_opportunity_action_change(
+            "strong-watch",
+            " STRONG WATCH ",
+        )
+        == "UNCHANGED"
+    )
+
+
+def test_classify_opportunity_action_change_returns_initial_run():
+    assert (
+        classify_opportunity_action_change(None, "WATCH")
+        == "INITIAL_RUN"
+    )
+    assert (
+        classify_opportunity_action_change("", "WATCH")
+        == "INITIAL_RUN"
+    )
+    assert (
+        classify_opportunity_action_change("RENT", "WATCH")
+        == "INITIAL_RUN"
+    )

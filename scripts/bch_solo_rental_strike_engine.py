@@ -1771,6 +1771,46 @@ def opportunity_action_changed(
 
     return previous != current
 
+OPPORTUNITY_ACTION_ORDER = {
+    "WAIT": 0,
+    "WEAK_WATCH": 1,
+    "WATCH": 2,
+    "STRONG_WATCH": 3,
+    "STRIKE_NOW": 4,
+}
+
+
+def classify_opportunity_action_change(
+    previous_action: Optional[str],
+    current_action: Optional[str],
+) -> str:
+    """
+    Classify the transition between two Opportunity Actions.
+
+    Returns one of:
+        INITIAL_RUN
+        UNCHANGED
+        UPGRADE
+        DOWNGRADE
+    """
+    previous = normalize_opportunity_action(previous_action)
+    current = normalize_opportunity_action(current_action)
+
+    if (
+        previous == "UNKNOWN"
+        or current == "UNKNOWN"
+    ):
+        return "INITIAL_RUN"
+
+    if previous == current:
+        return "UNCHANGED"
+
+    if OPPORTUNITY_ACTION_ORDER[current] > OPPORTUNITY_ACTION_ORDER[previous]:
+        return "UPGRADE"
+
+    return "DOWNGRADE"
+
+
 def init_history_db() -> None:
     with sqlite3.connect(HISTORY_DB_PATH) as conn:
         conn.execute("""
