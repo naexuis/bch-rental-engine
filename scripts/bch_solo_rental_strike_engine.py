@@ -1511,20 +1511,23 @@ def build_opportunity_history_section(
     """
     previous_action = opportunity.get("previous_action")
     current_action = opportunity.get("action", "UNKNOWN")
-    action_changed = bool(opportunity.get("action_changed"))
+    change_type = opportunity.get("change_type", "UNKNOWN")
 
-    if previous_action is None:
+    previous_display = "None" if previous_action is None else str(previous_action)
+
+    if change_type == "INITIAL_RUN":
         status = "Initial Run"
-        previous_display = "None"
+    elif change_type == "UNCHANGED":
+        status = "Unchanged"
     else:
-        status = "Changed" if action_changed else "Unchanged"
-        previous_display = str(previous_action)
+        status = "Changed"
 
     return f"""Opportunity History
 
 • Previous Action: {previous_display}
 • Current Action: {current_action}
-• Status: {status}"""
+• Status: {status}
+• Classification: {change_type}"""
 
 
 def build_interpretation_text(
