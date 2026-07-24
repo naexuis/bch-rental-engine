@@ -2109,6 +2109,82 @@ def get_latest_opportunity_action() -> Optional[str]:
 
     return row[0]
 
+def get_history_rows(
+    limit: int = 10,
+) -> List[Dict[str, Any]]:
+    """
+    Return the most recent history rows.
+
+    Results are returned newest-first.
+    """
+    init_history_db()
+
+    with sqlite3.connect(HISTORY_DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+
+        rows = conn.execute(
+            """
+            SELECT *
+            FROM run_history
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+
+    return [dict(row) for row in rows]
+
+def calculate_numeric_trend(
+    values: List[float],
+) -> Dict[str, Any]:
+    """
+    Calculate a simple trend from a sequence of numeric values.
+
+    Returns:
+        count
+        current
+        previous
+        change
+        direction
+    """
+
+    if not values:
+        return {
+            "count": 0,
+            "current": None,
+            "previous": None,
+            "change": None,
+            "direction": "UNKNOWN",
+        }
+
+    if len(values) == 1:
+        return {
+            "count": 1,
+            "current": values[-1],
+            "previous": None,
+            "change": None,
+            "direction": "UNKNOWN",
+        }
+
+    previous = values[-2]
+    current = values[-1]
+    change = round(current - previous, 1)
+
+    if change > 0:
+        direction = "IMPROVING"
+    elif change < 0:
+        direction = "DECLINING"
+    else:
+        direction = "STABLE"
+
+    return {
+        "count": len(values),
+        "current": current,
+        "previous": previous,
+        "change": change,
+        "direction": direction,
+    }
+
 def get_history_trends() -> Dict[str, Any]:
     init_history_db()
 

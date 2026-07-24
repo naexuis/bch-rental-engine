@@ -1,5 +1,6 @@
 from scripts.bch_solo_rental_strike_engine import (
     classify_opportunity_action_change,
+    get_history_rows,
     normalize_operator_action,
     normalize_opportunity_action,
     opportunity_action_changed,
@@ -113,3 +114,18 @@ def test_classify_opportunity_action_change_returns_initial_run():
         classify_opportunity_action_change("RENT", "WATCH")
         == "INITIAL_RUN"
     )
+
+def test_get_history_rows_returns_list():
+    """
+    Basic smoke test.
+
+    Verifies that the history retrieval API returns a list
+    and that each returned row is a dictionary.
+    """
+
+    rows = get_history_rows(limit=5)
+
+    assert isinstance(rows, list)
+
+    for row in rows:
+        assert isinstance(row, dict)
