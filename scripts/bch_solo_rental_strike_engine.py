@@ -2323,10 +2323,50 @@ def analyze_metric(
 
     persistence = calculate_trend_persistence(values)
 
-    return {
+    analysis = {
         "metric": metric,
         "trend": trend,
         "persistence": persistence,
+    }
+
+    analysis["confidence"] = calculate_trend_confidence(
+        analysis,
+    )
+
+    return analysis
+
+def calculate_trend_confidence(
+    analysis: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Estimate confidence in a metric's trend based on
+    trend direction, persistence, and history depth.
+    """
+
+    trend = analysis.get("trend", {})
+    persistence = analysis.get("persistence", {})
+
+    direction = trend.get("direction", "UNKNOWN")
+    history_count = trend.get("count", 0)
+    consecutive_moves = persistence.get("consecutive_moves", 0)
+
+    if direction == "UNKNOWN":
+        level = "LOW"
+
+    elif consecutive_moves >= 5 and history_count >= 8:
+        level = "HIGH"
+
+    elif consecutive_moves >= 3 and history_count >= 5:
+        level = "MEDIUM"
+
+    else:
+        level = "LOW"
+
+    return {
+        "level": level,
+        "direction": direction,
+        "history_count": history_count,
+        "consecutive_moves": consecutive_moves,
     }
 
 def get_history_trends() -> Dict[str, Any]:
