@@ -359,7 +359,7 @@ def calculate_opportunity_score(
     market_regime: str,
 ) -> Dict[str, Any]:
     fvr_score = max(0, min(65, fair_value_ratio / 1.10 * 65))
-    prob_score = max(0, min(20, prob_1plus / 0.50 * 20))
+    prob_score = max(0, min(20, prob_1plus / 0.70 * 20))
     roi_score = max(0, min(15, (risk_adjusted_roi_pct + 25) / 35 * 15))
 
     raw_score = fvr_score + prob_score + roi_score

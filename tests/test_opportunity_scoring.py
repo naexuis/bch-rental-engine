@@ -6,7 +6,7 @@ from scripts.bch_solo_rental_strike_engine import (
 def test_calculate_opportunity_score_perfect_inputs():
     result = calculate_opportunity_score(
         fair_value_ratio=1.10,
-        prob_1plus=0.50,
+        prob_1plus=0.70,
         risk_adjusted_roi_pct=10.0,
         market_regime="FAIR",
     )
@@ -40,20 +40,83 @@ def test_calculate_opportunity_score_applies_negative_roi_cap():
     assert result["score"] == 54.0
     assert result["action"] == "WEAK_WATCH"
 
-def test_probability_score_reaches_maximum_at_fifty_percent():
-    low = calculate_opportunity_score(
+def test_probability_score_reaches_maximum_at_seventy_percent():
+    below_target = calculate_opportunity_score(
         fair_value_ratio=1.10,
         prob_1plus=0.50,
         risk_adjusted_roi_pct=10.0,
         market_regime="FAIR",
     )
 
-    high = calculate_opportunity_score(
+    at_target = calculate_opportunity_score(
         fair_value_ratio=1.10,
         prob_1plus=0.70,
         risk_adjusted_roi_pct=10.0,
         market_regime="FAIR",
     )
 
-    assert low["components"]["prob_score"] == 20.0
-    assert high["components"]["prob_score"] == 20.0
+    above_target = calculate_opportunity_score(
+        fair_value_ratio=1.10,
+        prob_1plus=0.90,
+        risk_adjusted_roi_pct=10.0,
+        market_regime="FAIR",
+    )
+
+    assert below_target["components"]["prob_score"] == 14.3
+    assert at_target["components"]["prob_score"] == 20.0
+    assert above_target["components"]["prob_score"] == 20.0
+
+def test_probability_score_sensitivity(capsys):
+    """
+    Diagnostic test to visualize how Opportunity Score changes as
+    P(1+) increases while holding all other inputs constant.
+
+    This is primarily intended as a characterization test for the
+    current scoring model.
+    """
+
+    print("\n")
+    print("=" * 72)
+    print("Opportunity Score Sensitivity to P(1+)")
+    print("=" * 72)
+    print(
+        f"{'P(1+)':>8} "
+        f"{'Prob Score':>12} "
+        f"{'Total Score':>12} "
+        f"{'Action':>15}"
+    )
+    print("-" * 72)
+
+    probabilities = [
+        0.00,
+        0.10,
+        0.20,
+        0.30,
+        0.40,
+        0.50,
+        0.60,
+        0.70,
+        0.80,
+        0.90,
+        1.00,
+    ]
+
+    for p in probabilities:
+        result = calculate_opportunity_score(
+            fair_value_ratio=1.10,
+            prob_1plus=p,
+            risk_adjusted_roi_pct=10.0,
+            market_regime="FAIR",
+        )
+
+        print(
+            f"{p:8.2%} "
+            f"{result['components']['prob_score']:12.1f} "
+            f"{result['score']:12.1f} "
+            f"{result['action']:>15}"
+        )
+
+    print("=" * 72)
+
+    # The purpose of this test is diagnostic. It always passes.
+    assert True

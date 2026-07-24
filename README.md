@@ -229,3 +229,31 @@ Solo mining outcomes are probabilistic, and a rental can lose the entire rental 
 The project currently supports monitoring, strike evaluation, historical analytics, pool routing, dashboard visualization, Telegram alerts, and Docker-based deployment.
 
 Future work includes technical analysis, market health scoring, backtesting, and improved deployment automation.
+
+## Development Workflow
+
+### 1. Activate the virtual environment
+
+```bash
+source venv/bin/activate
+```
+
+### 2. Load environment variables
+
+```bash
+set -a
+source config/.env
+set +a
+```
+
+### 3. Run the test suite
+
+```bash
+pytest -q
+```
+
+### 4. Run the engine
+
+```bash
+python scripts/bch_solo_rental_strike_engine.py
+```
