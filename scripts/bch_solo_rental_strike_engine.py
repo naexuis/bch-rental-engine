@@ -2250,6 +2250,50 @@ def calculate_metric_trend(
 
     return calculate_numeric_trend(values)
 
+def calculate_trend_persistence(
+    values: List[float],
+) -> Dict[str, Any]:
+    """
+    Measure how many consecutive recent movements support
+    the current trend direction.
+    """
+    if len(values) < 2:
+        return {
+            "direction": "UNKNOWN",
+            "consecutive_moves": 0,
+        }
+
+    trend = calculate_numeric_trend(values)
+    direction = trend["direction"]
+
+    if direction == "UNKNOWN":
+        return {
+            "direction": "UNKNOWN",
+            "consecutive_moves": 0,
+        }
+
+    consecutive_moves = 0
+
+    for previous, current in zip(
+        reversed(values[:-1]),
+        reversed(values[1:]),
+    ):
+        change = current - previous
+
+        if direction == "IMPROVING" and change > 0:
+            consecutive_moves += 1
+        elif direction == "DECLINING" and change < 0:
+            consecutive_moves += 1
+        elif direction == "STABLE" and change == 0:
+            consecutive_moves += 1
+        else:
+            break
+
+    return {
+        "direction": direction,
+        "consecutive_moves": consecutive_moves,
+    }
+
 def get_history_trends() -> Dict[str, Any]:
     init_history_db()
 

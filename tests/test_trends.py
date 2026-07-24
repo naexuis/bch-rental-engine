@@ -1,6 +1,7 @@
 from scripts.bch_solo_rental_strike_engine import (
     calculate_metric_trend,
     calculate_numeric_trend,
+    calculate_trend_persistence,
 )
 
 def test_calculate_numeric_trend_improving():
@@ -114,3 +115,52 @@ def test_calculate_metric_trend_handles_empty_history():
 
     assert trend["count"] == 0
     assert trend["direction"] == "UNKNOWN"
+
+def test_calculate_trend_persistence_improving():
+    result = calculate_trend_persistence(
+        [50, 52, 54, 56],
+    )
+
+    assert result["direction"] == "IMPROVING"
+    assert result["consecutive_moves"] == 3
+
+
+def test_calculate_trend_persistence_declining():
+    result = calculate_trend_persistence(
+        [60, 58, 55, 51],
+    )
+
+    assert result["direction"] == "DECLINING"
+    assert result["consecutive_moves"] == 3
+
+
+def test_calculate_trend_persistence_stops_at_reversal():
+    result = calculate_trend_persistence(
+        [50, 55, 53, 56],
+    )
+
+    assert result["direction"] == "IMPROVING"
+    assert result["consecutive_moves"] == 1
+
+
+def test_calculate_trend_persistence_stable():
+    result = calculate_trend_persistence(
+        [54, 54, 54],
+    )
+
+    assert result["direction"] == "STABLE"
+    assert result["consecutive_moves"] == 2
+
+
+def test_calculate_trend_persistence_single_value():
+    result = calculate_trend_persistence([54])
+
+    assert result["direction"] == "UNKNOWN"
+    assert result["consecutive_moves"] == 0
+
+
+def test_calculate_trend_persistence_empty():
+    result = calculate_trend_persistence([])
+
+    assert result["direction"] == "UNKNOWN"
+    assert result["consecutive_moves"] == 0
