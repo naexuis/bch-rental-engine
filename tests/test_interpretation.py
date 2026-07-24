@@ -1,5 +1,6 @@
 from scripts.bch_solo_rental_strike_engine import (
     build_opportunity_history_section,
+    build_score_limiter_section,
 )
 
 
@@ -42,3 +43,76 @@ def test_build_opportunity_history_text_initial_run():
 
     assert "Status: Initial Run" in text
     assert "Classification: INITIAL_RUN" in text
+
+def test_build_score_limiter_section_for_low_fvr():
+    opportunity = {
+        "components": {
+            "fair_value_ratio": 0.84,
+            "risk_adjusted_roi_pct": 10.0,
+        }
+    }
+
+    result = build_score_limiter_section(opportunity)
+
+    assert "below 0.850" in result
+    assert "capped at 39" in result
+
+
+def test_build_score_limiter_section_for_fvr_below_ninety():
+    opportunity = {
+        "components": {
+            "fair_value_ratio": 0.89,
+            "risk_adjusted_roi_pct": 10.0,
+        }
+    }
+
+    result = build_score_limiter_section(opportunity)
+
+    assert "below 0.900" in result
+    assert "capped at 49" in result
+
+
+def test_build_score_limiter_section_for_roi_below_negative_ten():
+    opportunity = {
+        "components": {
+            "fair_value_ratio": 0.95,
+            "risk_adjusted_roi_pct": -11.0,
+        }
+    }
+
+    result = build_score_limiter_section(opportunity)
+
+    assert "below -10%" in result
+    assert "capped at 54" in result
+
+
+def test_build_score_limiter_section_for_negative_roi():
+    opportunity = {
+        "components": {
+            "fair_value_ratio": 0.95,
+            "risk_adjusted_roi_pct": -1.0,
+        }
+    }
+
+    result = build_score_limiter_section(opportunity)
+
+    assert "still negative" in result
+    assert "capped at 69" in result
+
+
+def test_build_score_limiter_section_without_active_cap():
+    opportunity = {
+        "components": {
+            "fair_value_ratio": 1.00,
+            "risk_adjusted_roi_pct": 1.0,
+        }
+    }
+
+    result = build_score_limiter_section(opportunity)
+
+    assert "No active Opportunity Score cap" in result
+
+
+def test_build_score_limiter_section_handles_missing_components():
+    assert build_score_limiter_section({}) == ""
+    assert build_score_limiter_section({"components": {}}) == ""

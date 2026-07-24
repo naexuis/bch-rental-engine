@@ -1529,6 +1529,48 @@ def build_opportunity_history_section(
 • Status: {status}
 • Classification: {change_type}"""
 
+def build_score_limiter_section(
+    opportunity: Dict[str, Any],
+) -> str:
+    """
+    Explain whether the Opportunity Score is currently being limited by one
+    of the engine's hard economic caps.
+    """
+    components = opportunity.get("components", {})
+
+    fvr = components.get("fair_value_ratio")
+    roi = components.get("risk_adjusted_roi_pct")
+
+    if fvr is None or roi is None:
+        return ""
+
+    if fvr < 0.85:
+        return """Score Limiter
+
+• Fair Value Ratio is below 0.850.
+• Opportunity Score is currently capped at 39 until pricing improves."""
+
+    if fvr < 0.90:
+        return """Score Limiter
+
+• Fair Value Ratio is below 0.900.
+• Opportunity Score is currently capped at 49 until pricing improves."""
+
+    if roi < -10:
+        return """Score Limiter
+
+• Risk-adjusted ROI is below -10%.
+• Opportunity Score is currently capped at 54 until economics improve."""
+
+    if roi < 0:
+        return """Score Limiter
+
+• Risk-adjusted ROI is still negative.
+• Opportunity Score is currently capped at 69 until ROI becomes positive."""
+
+    return """Score Limiter
+
+• No active Opportunity Score cap."""
 
 def build_interpretation_text(
     best: StrikeScenario,
@@ -1604,12 +1646,16 @@ def build_interpretation_text(
 
     opportunity_history = build_opportunity_history_section(opportunity)
 
+    score_limiter = build_score_limiter_section(opportunity)
+
     return f"""Recommendation: {best.recommendation}
 
 Summary:
 {headline}
 
 {opportunity_history}
+
+{score_limiter}
 
 Why:
 {blockers_text}
