@@ -1,111 +1,209 @@
 # Architecture Guide
 
-The BCH Rental Engine is a modular decision-support platform designed to evaluate short-duration Bitcoin Cash solo mining opportunities.
+The BCH Rental Engine is a layered decision-support platform for evaluating Bitcoin Cash hashpower rental opportunities.
 
-Rather than acting as an automated trading or mining system, the engine continuously analyzes the mining market, estimates expected outcomes under thousands of potential rental scenarios, and recommends whether a rental opportunity is economically attractive.
+The engine is designed around one guiding principle:
 
-The system is intentionally composed of loosely coupled components that communicate primarily through JSON and SQLite, making it portable, easy to debug, and straightforward to deploy on a single Linux server.
+> **Every recommendation should be transparent, explainable, testable, and backed by measurable evidence.**
+
+Unlike traditional mining calculators, the BCH Rental Engine does not simply calculate profitability.
+
+It explains:
+
+- What should be done
+- Why that recommendation was produced
+- What changed since the previous execution
+- Which market conditions are improving or deteriorating
+- What is preventing a stronger recommendation
+
+---
+
+# Current Version
+
+**Version:** v2.3.0
+
+**Architecture Status:** Stable
 
 ---
 
 # Design Philosophy
 
-The project was designed around several guiding principles.
+The BCH Rental Engine is built around six core principles.
 
-## Simplicity
+## 1. Explainability
 
-The engine should run on a single computer without requiring external databases, web servers, or cloud infrastructure.
+Every recommendation should be understandable.
 
-## Portability
+The operator should never have to trust a black box.
 
-The project should run equally well on:
+Instead, the engine explains:
+
+- Opportunity Score
+- Recommendation
+- Trend
+- Score Limiter
+- Historical changes
+- Current blockers
+
+---
+
+## 2. Layered Architecture
+
+Each architectural layer has a single responsibility.
+
+```
+Market Data
+
+↓
+
+Decision Engine
+
+↓
+
+History
+
+↓
+
+Analytics
+
+↓
+
+Explainability
+
+↓
+
+Operator
+```
+
+This separation allows each subsystem to evolve independently.
+
+---
+
+## 3. Modularity
+
+Every subsystem should perform exactly one job.
+
+Examples
+
+- Market Data
+- Opportunity Scoring
+- Recommendation Engine
+- History
+- Analytics
+- Dashboard
+- Telegram
+
+No subsystem should contain unrelated logic.
+
+---
+
+## 4. Testability
+
+Every new capability follows the same engineering workflow.
+
+```
+Design
+
+↓
+
+Tests
+
+↓
+
+Implementation
+
+↓
+
+Compile
+
+↓
+
+Runtime Validation
+
+↓
+
+Regression Tests
+
+↓
+
+Commit
+
+↓
+
+Push
+
+↓
+
+Release
+```
+
+This workflow has become a core architectural principle.
+
+---
+
+## 5. Portability
+
+The engine runs on
 
 - Umbrel
 - Ubuntu
-- AWS EC2
-- DigitalOcean
-- Linode
 - Raspberry Pi
-- Local workstation
+- AWS
+- DigitalOcean
+- Local Linux workstations
 
-without code changes.
+using the same codebase.
 
-## Transparency
+---
 
-Every recommendation should be explainable.
+## 6. Explainable Intelligence
 
-Rather than returning only a recommendation such as
+The engine favors transparent analytics over opaque prediction.
 
-```
-RENT
-```
-
-the engine provides
-
-- Expected Profit
-- Risk Adjusted ROI
-- Fair Value Ratio
-- Block Probabilities
-- Opportunity Score
-- Market Regime
-
-allowing the user to understand exactly why the recommendation was made.
-
-## Modularity
-
-Each subsystem has a single responsibility.
-
-Examples include:
-
-- Market Data
-- Pool Adapters
-- Optimization Engine
-- Decision Engine
-- Dashboard
-- Telegram
-- History Database
-
-This makes future expansion significantly easier.
+Every recommendation should be reproducible from the underlying data.
 
 ---
 
 # High-Level Architecture
 
-```text
-                 CoinGecko
-                     │
-                     ▼
-             Market Data Layer
-                     │
-                     ▼
-             BCH Rental Engine
-                     │
-     ┌───────────────┼────────────────┐
-     │               │                │
-     ▼               ▼                ▼
- Latest JSON     SQLite History    JSONL Logs
-     │
-     ▼
- Streamlit Dashboard
-     │
-     ▼
- Decision Support
+```
+                    External APIs
+                          │
+                          ▼
+                   Market Data Layer
+                          │
+                          ▼
+                 Opportunity Scoring
+                          │
+                          ▼
+                Recommendation Engine
+                          │
+        ┌─────────────────┼──────────────────┐
+        ▼                 ▼                  ▼
+  History Database    JSON State        JSONL Logs
+        │
+        ▼
+    Analytics Layer
+        │
+        ▼
+  Explainability Layer
+        │
+        ▼
+ Dashboard / Telegram / Operator
 ```
 
 ---
 
-# Major Components
-
-## 1. Market Data Layer
+# Layer 1 — Market Data
 
 Purpose
 
-Retrieve the current state of the BCH mining market.
+Collect the current BCH mining environment.
 
-Sources include
+Current sources
 
 - CoinGecko
-- Braiins
+- Braiins Hashpower
 - MiningRigRentals
 - BCH Network
 
@@ -113,72 +211,68 @@ Outputs
 
 - BTC price
 - BCH price
-- BCH difficulty
-- Estimated network hashrate
+- Difficulty
+- Network hashrate
 - Rental pricing
 - Available hashrate
 
 ---
 
-## 2. Pool Adapter Layer
-
-Purpose
-
-Provide a common interface for multiple rental providers.
-
-Current adapters
-
-- Braiins
-- MiningRigRentals
-
-Future adapters
-
-- NiceHash
-- Kryptex
-- Additional marketplaces
-
-Each adapter converts provider-specific APIs into a standardized internal format.
-
----
-
-# 3. Optimization Engine
+# Layer 2 — Opportunity Scoring
 
 Purpose
 
 Evaluate every feasible rental scenario.
 
-Inputs
-
-- Budget range
-- Hashrate range
-- Rental prices
-- Market data
-
-For each scenario the engine computes
-
-- Rental duration
-- Expected blocks
-- P(0)
-- P(1+)
-- P(2+)
-- Revenue
-- Profit
-- ROI
-
-The engine may evaluate hundreds or thousands of scenarios during a single execution.
-
----
-
-# 4. Decision Engine
-
-The Decision Engine converts raw optimization results into actionable recommendations.
-
-Metrics considered include
+Current scoring inputs
 
 - Fair Value Ratio
 - Risk-adjusted ROI
-- Probability of success
-- Market regime
+- Probability of finding a block
+- Market Regime
+
+Outputs
+
+- Opportunity Score
+- Opportunity Action
+
+Economic caps ensure poor economics never appear attractive.
+
+Current caps
+
+```
+FVR < 0.85
+
+↓
+
+Score capped at 39
+
+FVR < 0.90
+
+↓
+
+Score capped at 49
+
+ROI < -10%
+
+↓
+
+Score capped at 54
+
+ROI < 0%
+
+↓
+
+Score capped at 69
+```
+
+---
+
+# Layer 3 — Recommendation Engine
+
+Purpose
+
+Convert Opportunity Scores into operator recommendations.
 
 Outputs
 
@@ -186,281 +280,308 @@ Outputs
 - WATCH
 - DO NOT RENT
 
-along with an Opportunity Score.
+Supporting classifications
+
+- STRIKE_NOW
+- STRONG_WATCH
+- WATCH
+- WEAK_WATCH
+- WAIT
 
 ---
 
-# 5. Opportunity Score
-
-Rather than relying on a single metric, the engine combines multiple indicators.
-
-Current components
-
-- Fair Value Ratio
-- Risk-adjusted ROI
-- Block probability
-- Market regime
-
-Result
-
-```
-0–100
-```
-
-Higher scores indicate better opportunities.
-
----
-
-# 6. Pool Routing Engine
-
-Once the optimal rental has been selected, the Pool Routing Engine determines the most appropriate mining pool.
-
-Factors considered
-
-- Existing pool hashrate
-- Pool fee
-- Network share
-- Routing score
-
-Output
-
-Recommended pool along with ranked alternatives.
-
----
-
-# 7. Historical Database
-
-Historical recommendations are stored in SQLite.
-
-Why SQLite?
-
-- Zero administration
-- Single file
-- Portable
-- Fast
-- Excellent analytical performance
-
-The database enables
-
-- Historical charts
-- Trend analysis
-- Strategy evaluation
-- Future backtesting
-
----
-
-# 8. JSON State File
-
-Each engine execution writes a complete snapshot of the current recommendation.
-
-```
-state/
-    bch_solo_rental_strike_engine.json
-```
+# Layer 4 — Historical Intelligence
 
 Purpose
 
-Provide a simple interface between
+Persist every recommendation.
 
-Engine
+Storage
+
+SQLite
+
+Historical data includes
+
+- Opportunity Score
+- Opportunity Action
+- Market Regime
+- Recommendation
+- ROI
+- FVR
+- Probability
+- Difficulty
+- Pricing
+
+The history subsystem also tracks
+
+- Previous Action
+- Previous Opportunity Score
+- Score Delta
+- Action Classification
+
+---
+
+# Layer 5 — Analytics
+
+The analytics layer converts historical data into reusable analytical primitives.
+
+Current architecture
+
+```
+SQLite
 
 ↓
 
-Dashboard
+History Retrieval
 
-The dashboard never runs the optimization itself.
+↓
 
-It simply visualizes the latest engine output.
+Metric Extraction
+
+↓
+
+Numeric Trend
+
+↓
+
+Trend Persistence
+```
+
+Current primitives
+
+### History
+
+```
+get_history_rows()
+```
+
+### Numeric Trends
+
+```
+calculate_numeric_trend()
+```
+
+### Metric Trends
+
+```
+calculate_metric_trend()
+```
+
+### Trend Persistence
+
+```
+calculate_trend_persistence()
+```
+
+These functions are intentionally generic and reusable.
+
+They are not BCH-specific.
 
 ---
 
-# 9. JSONL Logs
+# Layer 6 — Explainability
 
-Operational events are written as JSON Lines.
+Purpose
 
-Benefits
+Transform analytical results into operator-facing explanations.
 
-- Easy debugging
-- Machine readable
-- Incremental append
-- Low overhead
+Current presentation helpers
 
-Automatic log rotation prevents unlimited growth.
+```
+build_opportunity_history_section()
 
----
+build_score_limiter_section()
 
-# 10. Streamlit Dashboard
+build_opportunity_trend_section()
+```
 
-The dashboard provides an operational interface.
+The engine now explains
 
-Pages currently include
-
-- Market Overview
-- Decision Center
-- Strike Analysis
-- Pool Routing
-- Historical Performance
-- Candlestick Charts
-
-The dashboard reads
-
-- JSON state
-- SQLite history
-
-It performs no optimization itself.
+- What changed
+- Current trend
+- Why the score is limited
+- Market blockers
+- Conditions required to rent
 
 ---
 
-# 11. Telegram Alerts
+# Persistence Layer
 
-The alert subsystem monitors recommendation changes.
+Current State
 
-Notifications include
+```
+state/
+
+bch_solo_rental_strike_engine.json
+```
+
+Historical State
+
+```
+state/
+
+bch_rental_history.sqlite
+```
+
+Operational Logs
+
+```
+logs/
+
+*.jsonl
+```
+
+Each storage mechanism serves a different purpose.
+
+---
+
+# Dashboard
+
+The dashboard performs no optimization.
+
+Instead it consumes
+
+- JSON State
+- SQLite History
+
+The engine remains the single source of truth.
+
+---
+
+# Telegram
+
+Telegram notifications are intentionally lightweight.
+
+Alerts summarize
 
 - Recommendation
 - Opportunity Score
-- Expected Profit
 - Market Regime
+- Significant changes
 
-Alerts are only sent when meaningful changes occur.
+Future versions will incorporate Trend Intelligence.
 
 ---
 
 # Data Flow
 
-```text
+```
 Market APIs
       │
       ▼
-Market Data Layer
+Market Data
       │
       ▼
-Optimization Engine
+Opportunity Scoring
       │
       ▼
-Decision Engine
+Recommendation Engine
       │
-      ├────────────┐
-      ▼            ▼
+      ├─────────────┐
+      ▼             ▼
 SQLite        JSON State
-      │            │
-      ▼            ▼
-Dashboard    Telegram
+      │             │
+      ▼             ▼
+Analytics     Dashboard
+      │
+      ▼
+Explainability
+      │
+      ▼
+Operator
 ```
 
 ---
 
-# Why JSON + SQLite?
+# Testing Architecture
 
-The project intentionally separates
+The project currently contains dedicated test suites for
 
-Current State
+- Recommendation History
+- Opportunity Scoring
+- Interpretation
+- Trend Analytics
 
-↓
+Regression tests currently validate
 
-Historical State
+- Opportunity Scoring
+- Recommendation History
+- Trend Analysis
+- Interpretation
+- Explainability
 
-The latest recommendation is stored in JSON because
-
-- Simple
-- Human readable
-- Easy to inspect
-- Fast
-
-Historical information is stored in SQLite because
-
-- Efficient queries
-- Time-series analysis
-- Reliable persistence
-
-This combination keeps the system simple while providing robust historical capabilities.
+Every architectural layer is protected by automated tests.
 
 ---
 
-# Why Streamlit?
+# Release Evolution
 
-The dashboard was built with Streamlit because
-
-- Minimal infrastructure
-- Rapid development
-- Native Plotly integration
-- Excellent data visualization
-- Easy deployment
-
-The goal is operational monitoring rather than a multi-user web application.
-
----
-
-# Why Docker?
-
-Docker provides
-
-- Reproducible deployments
-- Dependency isolation
-- Easy upgrades
-- Consistent runtime environment
-
-The dashboard is currently deployed in Docker while the engine runs directly on the host.
-
-This architecture allows the dashboard to be restarted independently of the engine.
-
----
-
-# Why Umbrel?
-
-The project originated on an Umbrel server because it provides
-
-- Always-on operation
-- Low power consumption
-- Docker support
-- Linux compatibility
-
-However, the architecture is intentionally cloud-portable.
-
-Supported deployment targets include
-
-- AWS EC2
-- Azure
-- DigitalOcean
-- Linode
-- Vultr
+| Version | Major Architectural Addition |
+|----------|------------------------------|
+| v1.0 | Core Engine |
+| v1.1 | Dashboard |
+| v2.0 | Operator Console |
+| v2.1 | Operations Toolkit |
+| v2.2 | Opportunity Intelligence & Explainability |
+| v2.3 | Trend Intelligence |
 
 ---
 
 # Future Architecture
 
-The next major architectural additions include
+The next architectural additions will expand the Analytics Layer.
 
-- Technical Analysis Engine
-- Historical Strategy Backtesting
-- Dashboard Settings Editor
-- Automated Rental Execution
-- Multi-Coin Support
-- AI Decision Assistant
+Planned
 
-These features will be added as separate modules to preserve the project's modular architecture.
+```
+History
+
+↓
+
+Metric Analysis
+
+↓
+
+Trend
+
+↓
+
+Persistence
+
+↓
+
+Trend Confidence
+
+↓
+
+Volatility
+
+↓
+
+Forecasting
+
+↓
+
+Autonomous Strike Detection
+```
+
+Each capability will build on the previous layer rather than introducing unrelated functionality.
 
 ---
 
-# Architectural Principles
+# Long-Term Vision
 
-The project follows several long-term principles.
+The BCH Rental Engine has evolved from a profitability calculator into a layered decision-support platform.
 
-- Keep components loosely coupled.
-- Separate computation from visualization.
-- Prefer configuration over hardcoded values.
-- Minimize external dependencies.
-- Favor portable technologies.
-- Record every recommendation for future analysis.
-- Design for explainability rather than black-box decisions.
+Future development will continue to prioritize
 
----
+- Explainability
+- Analytics
+- Historical intelligence
+- Trend analysis
+- Forecasting
+- Operational tooling
 
-# Next Steps
+The long-term objective is not simply to predict profitable rentals.
 
-Continue with:
-
-- [Operations Runbook](OPERATIONS.md)
-- [Deploy to EC2](DEPLOY_EC2.md)
-- [Decision Log](DECISION_LOG.md)
-- [Developer Journal](DEVELOPER_JOURNAL.md)
+The objective is to build a platform that operators trust because every recommendation is transparent, measurable, reproducible, and explainable.
