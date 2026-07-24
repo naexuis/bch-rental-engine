@@ -1,18 +1,20 @@
-# Project Roadmap
+# BCH Rental Engine Roadmap
 
-The BCH Rental Engine is an actively evolving decision-support platform for evaluating Bitcoin Cash solo mining opportunities.
+The BCH Rental Engine is an actively evolving decision-support platform for evaluating Bitcoin Cash hashpower rental opportunities.
 
-This roadmap outlines the planned direction of the project over the coming releases.
+Rather than attempting to predict the future, the engine focuses on producing transparent, explainable, and data-driven recommendations that help operators decide:
 
-The roadmap is divided into major milestones rather than strict release dates.
+> **"Should I rent hashpower right now?"**
 
-Features may move between milestones as priorities evolve.
+The long-term goal is to become the most comprehensive open-source analytics platform for cryptocurrency hashpower rentals.
 
 ---
 
 # Current Version
 
-**Version:** v1.1.0
+**Version:** v2.3.0
+
+**Release:** Trend Intelligence
 
 **Status:** Active Development
 
@@ -20,24 +22,56 @@ Features may move between milestones as priorities evolve.
 
 # Project Vision
 
-The long-term vision is to create the most comprehensive open-source decision-support platform for cryptocurrency hashpower rentals.
+The BCH Rental Engine combines:
 
-The platform should answer one simple question:
-
-> **"Should I rent hashpower right now?"**
-
-To answer that question, the engine combines:
-
-- Market pricing
+- Live market pricing
 - Network conditions
 - Rental pricing
 - Statistical probability
-- Risk analysis
-- Historical trends
-- Technical analysis
-- Operational intelligence
+- Risk-adjusted profitability
+- Historical intelligence
+- Trend analysis
+- Explainable decision logic
+- Operational tooling
 
-The goal is not to automate decision-making, but to provide transparent, explainable recommendations.
+The objective is not to automate mining decisions, but to explain them.
+
+Every recommendation should answer:
+
+- What should I do?
+- Why?
+- What changed?
+- What is preventing a better recommendation?
+- Which direction are market conditions moving?
+
+---
+
+# System Architecture
+
+```
+Market Data
+      │
+      ▼
+Opportunity Scoring
+      │
+      ▼
+Recommendation Engine
+      │
+      ▼
+History Persistence
+      │
+      ▼
+History Retrieval API
+      │
+      ▼
+Analytics Layer
+      │
+      ▼
+Explainability
+      │
+      ▼
+Operator
+```
 
 ---
 
@@ -49,11 +83,11 @@ Status: Complete
 
 ### Completed
 
-- BCH market data
+- Live BCH market data
 - BCH difficulty tracking
 - Network hashrate estimation
-- Braiins support
-- MiningRigRentals support
+- Braiins Hashpower integration
+- MiningRigRentals integration
 - Budget optimization
 - Hashrate optimization
 - Strike scoring
@@ -71,186 +105,244 @@ Status: Complete
 
 ---
 
-# Phase 2 — Decision Intelligence 🚧
+## Phase 2 — Decision Intelligence ✅
 
-Status: In Progress
+Status: Complete
 
-Goal:
+Major additions
 
-Improve recommendation quality through additional analytics.
-
-### Planned
-
-- Technical indicators
-- Moving averages
-- RSI
-- MACD
-- Bollinger Bands
-- VWAP
-- ATR
-- Trend strength analysis
-- Momentum scoring
-- Volatility scoring
-
-Dashboard additions
-
-- Indicator overlays
-- Technical summary
-- Bull/Bear market gauge
+- Opportunity Score
+- Opportunity Actions
+- Economic score caps
+- Market regime classification
+- Probability target alignment
+- Dedicated Opportunity Score test suite
+- Characterization tests
+- Score calibration
 
 ---
 
-# Phase 3 — Historical Analytics
+## Phase 3 — Historical Intelligence ✅
 
-Status: Planned
-
-Goal:
-
-Learn from previous market conditions.
+Status: Complete
 
 Features
 
-- Historical Opportunity Score charts
-- Historical recommendation analysis
-- Profitability timeline
-- Win/Loss statistics
-- Historical FVR distribution
-- Historical ROI distribution
-- Historical probability analysis
-
-New dashboard pages
-
-- Analytics
-- Performance
-- Trends
+- Recommendation History
+- Previous Opportunity Action
+- Previous Opportunity Score
+- Opportunity Score delta
+- Action normalization
+- Action transition detection
+- Upgrade / Downgrade classification
+- SQLite history API
+- Generic history retrieval
 
 ---
 
-# Phase 4 — Strategy Backtesting
+## Phase 4 — Explainability ✅
 
-Status: Planned
-
-Goal:
-
-Evaluate how historical strategies would have performed.
+Status: Complete
 
 Features
 
-- Replay historical markets
-- Simulate rental decisions
-- Historical profit curves
-- Historical block probabilities
-- Strategy comparison
-- Parameter optimization
-
-Possible strategies
-
-- Aggressive
-- Conservative
-- Probability-first
-- ROI-first
-- Custom
+- Opportunity History
+- Score Limiter
+- Market blockers
+- Conditions needed to rent
+- Transparent recommendation reasoning
+- Recommendation explanation improvements
 
 ---
 
-# Phase 5 — Dashboard Enhancements
+## Phase 5 — Trend Intelligence ✅
 
-Status: Planned
+Status: Complete
 
-Future improvements
+Features
 
-### Dashboard Settings
+- Generic numeric trend engine
+- Generic metric trend engine
+- Opportunity Score trend analysis
+- Trend presentation helper
+- Trend unit test suite
+- Analytics layer architecture
 
-- Editable configuration
-- Theme selection
-- Refresh interval
-- Budget defaults
-- Pool preferences
+Current output includes
 
-### Better Visualizations
-
-- Heatmaps
-- Gauge charts
-- Opportunity timeline
-- Animated market replay
-- Correlation charts
-
-### Better UX
-
-- Mobile layout
-- Dark mode improvements
-- Keyboard shortcuts
-- Faster page loading
+- Direction
+- Previous score
+- Current score
+- Latest change
+- History depth
 
 ---
 
-# Phase 6 — Automation
+## Phase 6 — Trend Confidence 🚧
+
+Status: Next
+
+Goal
+
+Improve trust in trend analysis.
+
+Planned
+
+- Trend confidence score
+- Consecutive improvement detection
+- Consecutive decline detection
+- Minimum history requirements
+- Trend quality scoring
+- Plateau detection
+- False trend detection
+
+Example
+
+```
+Trend
+
+Direction:
+IMPROVING
+
+Confidence:
+HIGH
+
+Reason:
+18 observations
+5 consecutive improvements
+```
+
+---
+
+## Phase 7 — Volatility Intelligence
 
 Status: Planned
 
 Goal
 
-Reduce manual operation.
+Understand market stability.
 
 Features
 
-- Automatic engine scheduling
-- Automatic Docker updates
-- Automatic Git updates
-- Scheduled backups
-- Health monitoring
-- Email alerts
-- SMS alerts
-- Discord alerts
-- Slack integration
+- Opportunity Score volatility
+- FVR volatility
+- ROI volatility
+- BCH price volatility
+- Difficulty volatility
+- Stable vs unstable market detection
+- Opportunity stability score
 
 ---
 
-# Phase 7 — Cloud Deployment
+## Phase 8 — Forecasting
 
 Status: Planned
 
-Deployment targets
+Goal
 
-- AWS EC2
-- DigitalOcean
-- Azure
-- Google Cloud
-- Linode
-- Vultr
+Estimate where the market is heading.
 
-Deployment improvements
+Potential features
 
-- Docker Compose
-- Nginx
-- HTTPS
-- Let's Encrypt
-- CloudWatch
-- Terraform
-
----
-
-# Phase 8 — Advanced Mining Intelligence
-
-Status: Planned
-
-Features
-
+- Rolling averages
+- Exponential moving averages
+- Opportunity Score forecasting
 - Difficulty forecasting
-- Hashrate forecasting
-- BCH price forecasting
 - Rental price forecasting
-- Block timing estimation
-- Pool congestion prediction
-- Rental availability prediction
+- Time-to-strike estimation
+- Expected recommendation transitions
 
 ---
 
-# Phase 9 — Multi-Coin Support
+## Phase 9 — Autonomous Strike Detection
 
 Status: Planned
 
-Potential coins
+Goal
+
+Detect high-quality rental opportunities automatically.
+
+Possible features
+
+- Automatic strike alerts
+- Opportunity ranking
+- Opportunity confidence
+- Market health score
+- Strike countdown
+- Opportunity expiration estimates
+
+---
+
+## Phase 10 — Dashboard Intelligence
+
+Status: Planned
+
+Future dashboard additions
+
+- Trend dashboard
+- Opportunity timeline
+- Volatility dashboard
+- Confidence indicators
+- Recommendation history charts
+- Score distribution charts
+- Trend explorer
+- Historical playback
+
+---
+
+## Phase 11 — Historical Analytics
+
+Status: Planned
+
+Features
+
+- Recommendation performance
+- Historical Opportunity Score distributions
+- ROI distributions
+- FVR distributions
+- Recommendation frequency
+- Historical market statistics
+- Long-term analytics
+
+---
+
+## Phase 12 — Strategy Backtesting
+
+Status: Planned
+
+Features
+
+- Replay historical markets
+- Strategy simulation
+- Profitability curves
+- Strategy comparison
+- Parameter optimization
+- Historical strike replay
+
+---
+
+## Phase 13 — Automation
+
+Status: Planned
+
+Features
+
+- Scheduled engine execution
+- Automatic updates
+- Health monitoring
+- Scheduled reports
+- Email alerts
+- Discord
+- Slack
+- SMS
+
+---
+
+## Phase 14 — Multi-Coin Support
+
+Status: Planned
+
+Potential additions
 
 - Bitcoin
 - Litecoin
@@ -260,191 +352,135 @@ Potential coins
 
 Goal
 
-Create a generalized hashpower rental analysis platform.
+Generalize the analytics engine beyond BCH.
 
 ---
 
-# Phase 10 — AI Decision Assistant
+## Phase 15 — Predictive Decision Engine
 
 Status: Long-Term Vision
 
-Features
+Long-term capabilities
 
-- Natural language explanations
-- Recommendation summaries
-- "Why not rent?"
-- "What changed?"
+- Predictive Opportunity Score
+- Predictive recommendations
+- Machine-assisted forecasting
+- Intelligent market summaries
+- Interactive operator assistant
 - Daily market brief
-- Interactive chat assistant
-- Personalized recommendations
-
-Example
-
-```
-Market conditions improved by 8%.
-
-The recommendation remains WATCH because:
-
-• Probability is still below target.
-• Rental prices remain above fair value.
-• Opportunity Score increased from 49 to 54.
-```
+- Explainable AI recommendations
 
 ---
 
-# Future Dashboard Pages
+# Analytics Layer
 
-Potential additions
+The analytics layer is now a reusable subsystem.
 
-- Portfolio
-- Alerts
-- Backtesting
-- Technical Analysis
-- Market Health
-- Strategy Comparison
-- Settings
-- API Explorer
-- Reports
-- Diagnostics
+```
+SQLite
+     │
+     ▼
+History Retrieval
+     │
+     ▼
+Metric Trend
+     │
+     ▼
+Numeric Trend
+     │
+     ▼
+Presentation
+```
+
+Future analytics will reuse this architecture.
 
 ---
 
-# Planned APIs
+# Testing Philosophy
 
-Possible future REST endpoints
+Every feature follows the same development workflow.
 
 ```
-GET /recommendation
+Design
 
-GET /history
+↓
 
-GET /market
+Tests
 
-GET /technical
+↓
 
-GET /pool-routing
+Implementation
 
-GET /dashboard
+↓
+
+Compile
+
+↓
+
+Runtime Validation
+
+↓
+
+Full Regression Suite
+
+↓
+
+Commit
+
+↓
+
+Push
+
+↓
+
+Release Tag
 ```
+
+This workflow has become one of the core engineering principles of the project.
 
 ---
 
-# Long-Term Goals
+# Release History
 
-The project aims to become:
-
-- A complete mining decision-support platform
-- Easy to deploy
-- Highly portable
-- Fully documented
-- Explainable
-- Extensible
-- Cloud-ready
+| Version | Major Capability |
+|----------|------------------|
+| v1.0.0 | Dashboard Decision Center |
+| v1.1.0 | Documentation & Changelog |
+| v2.0.0 | Dashboard V2 Operator Console |
+| v2.0.1 | Dashboard Polish |
+| v2.1.0 | Operations Toolkit |
+| v2.2.0 | Opportunity Intelligence & Explainability |
+| v2.3.0 | Trend Intelligence |
 
 ---
 
 # Guiding Principles
 
-Every new feature should improve at least one of the following:
+Every new feature should improve at least one of:
 
-- Accuracy
+- Recommendation quality
 - Explainability
 - Reliability
+- Testability
 - Maintainability
 - Performance
-- Portability
-- User Experience
+- Operator experience
 
-Features that do not improve one of these areas should be carefully evaluated before implementation.
-
----
-
-# Ideas Backlog
-
-Ideas under consideration
-
-- GPU acceleration
-- WebSocket live market feeds
-- Automatic parameter tuning
-- Risk profile presets
-- Historical market replay
-- PDF report generation
-- CSV exports
-- REST API
-- GraphQL API
-- Multi-user dashboard
-- Authentication
-- S3 backup support
-- Local data caching
-- Offline mode
-- Plugin architecture
+Features that do not improve one of these goals should be carefully evaluated before implementation.
 
 ---
 
-# Recently Completed
+# Long-Term Vision
 
-- ✅ Decision Center redesign
-- ✅ Historical dashboard
-- ✅ Pool routing analysis
-- ✅ Opportunity scoring
-- ✅ Candlestick charts
-- ✅ Readable market metrics
-- ✅ Automatic JSONL log rotation
-- ✅ Docker dashboard deployment
-- ✅ Comprehensive project documentation
+The BCH Rental Engine has evolved from a probability calculator into a layered decision-support platform.
 
----
+Future work will continue to focus on:
 
-# Release Milestones
+- Better recommendations
+- Better explanations
+- Better historical intelligence
+- Better analytics
+- Better forecasting
+- Better operational tooling
 
-| Version | Focus | Status |
-|----------|-------|--------|
-| v1.0 | Core Engine | ✅ Complete |
-| v1.1 | Dashboard & Documentation | ✅ Complete |
-| v1.2 | Technical Analysis | 🚧 In Progress |
-| v1.3 | Historical Analytics | 📋 Planned |
-| v1.4 | Strategy Backtesting | 📋 Planned |
-| v1.5 | Automation | 📋 Planned |
-| v2.0 | AI Decision Platform | 🔮 Vision |
-
----
-
-# Contributing
-
-Future contributors are encouraged to:
-
-- Keep the architecture modular.
-- Prefer configuration over hardcoded values.
-- Document architectural decisions.
-- Maintain portability across Linux environments.
-- Preserve explainability in all recommendation logic.
-- Write clear documentation alongside new features.
-
----
-
-# Success Criteria
-
-The project will be considered successful if it:
-
-- Produces transparent, data-driven rental recommendations.
-- Can be deployed on any Linux server in under 30 minutes.
-- Maintains a complete historical record of recommendations.
-- Remains easy to understand and extend.
-- Helps users make better-informed mining decisions.
-
----
-
-# Looking Ahead
-
-The BCH Rental Engine has evolved from a simple probability calculator into a comprehensive mining analytics platform.
-
-Future development will continue to focus on:
-
-- Smarter recommendations
-- Better visualizations
-- Stronger operational tooling
-- Richer historical analysis
-- Simplified deployment
-- Expanded market intelligence
-
-The long-term objective is to build a platform that users can trust not because it predicts the future, but because it clearly explains the trade-offs behind every recommendation.
+The long-term objective is to build a platform that operators trust—not because it predicts the future perfectly, but because every recommendation is transparent, explainable, and backed by measurable evidence.
