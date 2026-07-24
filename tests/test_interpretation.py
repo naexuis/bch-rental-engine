@@ -1,5 +1,6 @@
 from scripts.bch_solo_rental_strike_engine import (
     build_opportunity_history_section,
+    build_opportunity_trend_section,
     build_score_limiter_section,
 )
 
@@ -116,3 +117,66 @@ def test_build_score_limiter_section_without_active_cap():
 def test_build_score_limiter_section_handles_missing_components():
     assert build_score_limiter_section({}) == ""
     assert build_score_limiter_section({"components": {}}) == ""
+
+def test_build_opportunity_trend_section_improving():
+    trend = {
+        "count": 3,
+        "current": 55.0,
+        "previous": 52.0,
+        "change": 3.0,
+        "direction": "IMPROVING",
+    }
+
+    result = build_opportunity_trend_section(trend)
+
+    assert "Opportunity Trend" in result
+    assert "Direction: IMPROVING" in result
+    assert "Previous Score: 52.0" in result
+    assert "Current Score: 55.0" in result
+    assert "Latest Change: +3.0" in result
+    assert "History Points: 3" in result
+
+
+def test_build_opportunity_trend_section_declining():
+    trend = {
+        "count": 4,
+        "current": 51.5,
+        "previous": 54.0,
+        "change": -2.5,
+        "direction": "DECLINING",
+    }
+
+    result = build_opportunity_trend_section(trend)
+
+    assert "Direction: DECLINING" in result
+    assert "Latest Change: -2.5" in result
+
+
+def test_build_opportunity_trend_section_single_point():
+    trend = {
+        "count": 1,
+        "current": 54.0,
+        "previous": None,
+        "change": None,
+        "direction": "UNKNOWN",
+    }
+
+    result = build_opportunity_trend_section(trend)
+
+    assert "Direction: UNKNOWN" in result
+    assert "Current Score: 54.0" in result
+    assert "History Points: 1" in result
+    assert "Previous Score" not in result
+    assert "Latest Change" not in result
+
+
+def test_build_opportunity_trend_section_empty():
+    trend = {
+        "count": 0,
+        "current": None,
+        "previous": None,
+        "change": None,
+        "direction": "UNKNOWN",
+    }
+
+    assert build_opportunity_trend_section(trend) == ""

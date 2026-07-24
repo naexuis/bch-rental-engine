@@ -1572,10 +1572,41 @@ def build_score_limiter_section(
 
 • No active Opportunity Score cap."""
 
+def build_opportunity_trend_section(
+    trend: Dict[str, Any],
+) -> str:
+    """
+    Build a concise Opportunity Score trend summary.
+    """
+    count = trend.get("count", 0)
+    current = trend.get("current")
+    previous = trend.get("previous")
+    change = trend.get("change")
+    direction = trend.get("direction", "UNKNOWN")
+
+    if count == 0 or current is None:
+        return ""
+
+    if previous is None or change is None:
+        return f"""Opportunity Trend
+
+• Direction: UNKNOWN
+• Current Score: {current:.1f}
+• History Points: {count}"""
+
+    return f"""Opportunity Trend
+
+• Direction: {direction}
+• Previous Score: {previous:.1f}
+• Current Score: {current:.1f}
+• Latest Change: {change:+.1f}
+• History Points: {count}"""
+
 def build_interpretation_text(
     best: StrikeScenario,
     market_regime: str,
     opportunity: Dict[str, Any],
+    trend: Dict[str, Any],
     frontier_summary: Dict[str, Any],
 ) -> str:
     prob_pct = best.prob_1plus * 100
@@ -1646,6 +1677,10 @@ def build_interpretation_text(
 
     opportunity_history = build_opportunity_history_section(opportunity)
 
+    opportunity_trend = build_opportunity_trend_section(
+        trend,
+    )
+
     score_limiter = build_score_limiter_section(opportunity)
 
     return f"""Recommendation: {best.recommendation}
@@ -1654,6 +1689,8 @@ Summary:
 {headline}
 
 {opportunity_history}
+
+{opportunity_trend}
 
 {score_limiter}
 
@@ -2185,6 +2222,34 @@ def calculate_numeric_trend(
         "direction": direction,
     }
 
+def calculate_metric_trend(
+    history_rows: List[Dict[str, Any]],
+    metric: str,
+) -> Dict[str, Any]:
+    """
+    Calculate the latest numeric trend for a metric in history rows.
+
+    History rows are expected newest-first, matching get_history_rows().
+    Missing and non-numeric values are ignored.
+    """
+    values = []
+
+    for row in reversed(history_rows):
+        value = row.get(metric)
+
+        if value is None:
+            continue
+
+        if isinstance(value, bool):
+            continue
+
+        if not isinstance(value, (int, float)):
+            continue
+
+        values.append(float(value))
+
+    return calculate_numeric_trend(values)
+
 def get_history_trends() -> Dict[str, Any]:
     init_history_db()
 
@@ -2312,6 +2377,13 @@ def run_engine() -> Dict[str, Any]:
     previous_action = get_latest_opportunity_action()
     previous_score = get_latest_opportunity_score()
 
+    history = get_history_rows(limit=25)
+
+    score_trend = calculate_metric_trend(
+        history,
+        "opportunity_score",
+    )
+
     opportunity["previous_action"] = previous_action
     opportunity["previous_score"] = previous_score
     opportunity["score_change"] = opportunity_score_change(
@@ -2342,6 +2414,7 @@ def run_engine() -> Dict[str, Any]:
         best=best,
         market_regime=market_regime,
         opportunity=opportunity,
+        trend=score_trend,
         frontier_summary=frontier_summary,
     )
 
