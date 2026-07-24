@@ -1774,6 +1774,22 @@ def opportunity_action_changed(
 
     return previous != current
 
+def opportunity_score_change(
+    previous_score: Optional[float],
+    current_score: float,
+) -> Optional[float]:
+    """
+    Return the change in Opportunity Score since the previous run.
+
+    Returns:
+        Current score minus previous score, rounded to one decimal place,
+        or None if no previous score exists.
+    """
+    if previous_score is None:
+        return None
+
+    return round(current_score - previous_score, 1)
+
 OPPORTUNITY_ACTION_ORDER = {
     "WAIT": 0,
     "WEAK_WATCH": 1,
@@ -1992,6 +2008,30 @@ def write_history_row(
         )
         conn.commit()
 
+def get_latest_opportunity_score() -> Optional[float]:
+    """
+    Return the latest Opportunity Score stored in history.
+
+    Returns:
+        The latest opportunity_score value, or None if no history exists.
+    """
+    init_history_db()
+
+    with sqlite3.connect(HISTORY_DB_PATH) as conn:
+        row = conn.execute(
+            """
+            SELECT opportunity_score
+            FROM run_history
+            ORDER BY id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+
+    if row is None:
+        return None
+
+    return row[0]
+
 def get_latest_opportunity_action() -> Optional[str]:
     """
     Return the latest Opportunity Action stored in history.
@@ -2147,15 +2187,23 @@ def run_engine() -> Dict[str, Any]:
         market_regime=market_regime,
     )
 
-    opportunity["previous_action"] = get_latest_opportunity_action()
+    previous_action = get_latest_opportunity_action()
+    previous_score = get_latest_opportunity_score()
+
+    opportunity["previous_action"] = previous_action
+    opportunity["previous_score"] = previous_score
+    opportunity["score_change"] = opportunity_score_change(
+        previous_score,
+        opportunity["score"],
+    )
 
     opportunity["action_changed"] = opportunity_action_changed(
-        opportunity["previous_action"],
+        previous_action,
         opportunity["action"],
     )
 
     opportunity["change_type"] = classify_opportunity_action_change(
-        opportunity["previous_action"],
+        previous_action,
         opportunity["action"],
     )
 
