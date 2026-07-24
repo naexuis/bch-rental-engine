@@ -2294,6 +2294,41 @@ def calculate_trend_persistence(
         "consecutive_moves": consecutive_moves,
     }
 
+def analyze_metric(
+    history_rows: List[Dict[str, Any]],
+    metric: str,
+) -> Dict[str, Any]:
+    """
+    Build a reusable analytics result for one historical metric.
+
+    History rows are expected to be ordered newest-first, matching
+    get_history_rows(). Numeric metric values are converted into
+    chronological order before persistence is calculated.
+    """
+    trend = calculate_metric_trend(
+        history_rows=history_rows,
+        metric=metric,
+    )
+
+    values: List[float] = []
+
+    for row in reversed(history_rows):
+        value = row.get(metric)
+
+        if isinstance(value, bool):
+            continue
+
+        if isinstance(value, (int, float)):
+            values.append(float(value))
+
+    persistence = calculate_trend_persistence(values)
+
+    return {
+        "metric": metric,
+        "trend": trend,
+        "persistence": persistence,
+    }
+
 def get_history_trends() -> Dict[str, Any]:
     init_history_db()
 

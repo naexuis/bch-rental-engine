@@ -1,4 +1,5 @@
 from scripts.bch_solo_rental_strike_engine import (
+    analyze_metric,
     calculate_metric_trend,
     calculate_numeric_trend,
     calculate_trend_persistence,
@@ -164,3 +165,63 @@ def test_calculate_trend_persistence_empty():
 
     assert result["direction"] == "UNKNOWN"
     assert result["consecutive_moves"] == 0
+
+def test_analyze_metric_improving():
+    history = [
+        {"score": 40},
+        {"score": 30},
+        {"score": 20},
+        {"score": 10},
+    ]
+
+    analysis = analyze_metric(history, "score")
+
+    assert analysis["metric"] == "score"
+    assert analysis["trend"]["direction"] == "IMPROVING"
+    assert analysis["persistence"]["consecutive_moves"] == 3
+
+def test_analyze_metric_empty():
+    analysis = analyze_metric([], "score")
+
+    assert analysis["metric"] == "score"
+    assert analysis["trend"]["direction"] == "UNKNOWN"
+    assert analysis["persistence"]["direction"] == "UNKNOWN"
+
+def test_analyze_metric_missing_values():
+    history = [
+        {"score": 20},
+        {"score": None},
+        {"score": 10},
+        {"score": None},
+    ]
+
+    analysis = analyze_metric(history, "score")
+
+    assert analysis["trend"]["direction"] == "IMPROVING"
+
+def test_calculate_trend_confidence_high():
+    confidence = calculate_trend_confidence(
+        direction="IMPROVING",
+        consecutive_moves=6,
+        history_count=10,
+    )
+
+    assert confidence["level"] == "HIGH"
+
+def test_calculate_trend_confidence_medium():
+    confidence = calculate_trend_confidence(
+        direction="IMPROVING",
+        consecutive_moves=3,
+        history_count=5,
+    )
+
+    assert confidence["level"] == "MEDIUM"
+
+def test_calculate_trend_confidence_low():
+    confidence = calculate_trend_confidence(
+        direction="UNKNOWN",
+        consecutive_moves=0,
+        history_count=1,
+    )
+
+    assert confidence["level"] == "LOW"
