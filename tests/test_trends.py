@@ -9,6 +9,7 @@ from scripts.bch_solo_rental_strike_engine import (
     calculate_numeric_trend,
     calculate_trend_confidence,
     calculate_trend_persistence,
+    calculate_trend_strength,
     calculate_trend_velocity,
 )
 import pytest
@@ -499,3 +500,13 @@ def test_calculate_trend_velocity_empty():
     assert velocity["change"] is None
     assert velocity["velocity"] is None
     assert velocity["direction"] == "UNKNOWN"
+
+def test_calculate_trend_strength_strong():
+    strength = calculate_trend_strength(
+        confidence="HIGH",
+        volatility="LOW",
+        persistence=8,
+        direction="IMPROVING",
+    )
+
+    assert strength["strength"] == "VERY_STRONG"

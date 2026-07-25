@@ -2360,6 +2360,26 @@ def calculate_trend_velocity(
         "direction": direction,
     }
 
+def calculate_trend_strength(
+    confidence: str,
+    volatility: str,
+    persistence: int,
+    direction: str,
+) -> Dict[str, Any]:
+    if (
+        confidence == "HIGH"
+        and volatility == "LOW"
+        and persistence >= 8
+        and direction in {"IMPROVING", "DECLINING"}
+    ):
+        strength = "VERY_STRONG"
+    else:
+        strength = "UNKNOWN"
+
+    return {
+        "strength": strength,
+    }
+
 def analyze_metric(
     history_rows: List[Dict[str, Any]],
     metric: str,
