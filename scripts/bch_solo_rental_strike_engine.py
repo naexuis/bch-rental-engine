@@ -2498,6 +2498,14 @@ def build_volatility_section(
 
     {description}"""
 
+def build_trend_strength_section(
+    strength: Dict[str, Any],
+) -> str:
+    return (
+        "Trend Strength\n\n"
+        f"{strength.get('strength', 'UNKNOWN')}"
+    )
+
 def calculate_trend_confidence(
     analysis: Dict[str, Any],
 ) -> Dict[str, Any]:

@@ -3,6 +3,7 @@ from scripts.bch_solo_rental_strike_engine import (
     analyze_metric,
     build_interpretation_text,
     build_trend_confidence_section,
+    build_trend_strength_section,
     build_volatility_section,
     calculate_metric_trend,
     calculate_metric_volatility,
@@ -510,3 +511,13 @@ def test_calculate_trend_strength_strong():
     )
 
     assert strength["strength"] == "VERY_STRONG"
+
+def test_build_trend_strength_section_very_strong():
+    text = build_trend_strength_section(
+        {
+            "strength": "VERY_STRONG",
+        }
+    )
+
+    assert "Trend Strength" in text
+    assert "VERY_STRONG" in text
