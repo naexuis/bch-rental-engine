@@ -1602,6 +1602,24 @@ def build_opportunity_trend_section(
 • Latest Change: {change:+.1f}
 • History Points: {count}"""
 
+def build_trend_confidence_section(
+    confidence: Dict[str, Any],
+) -> str:
+    """
+    Build a concise Trend Confidence summary.
+    """
+    level = confidence.get("level", "UNKNOWN")
+    direction = confidence.get("direction", "UNKNOWN")
+    history_count = confidence.get("history_count", 0)
+    consecutive_moves = confidence.get("consecutive_moves", 0)
+
+    return f"""Trend Confidence
+
+• Level: {level}
+• Direction: {direction}
+• History Points: {history_count}
+• Consecutive Moves: {consecutive_moves}"""
+
 def build_interpretation_text(
     best: StrikeScenario,
     market_regime: str,
@@ -1616,6 +1634,7 @@ def build_interpretation_text(
     action = opportunity.get("action", "UNKNOWN")
 
     trend = analysis.get("trend", {})
+    confidence = analysis.get("confidence", {})
 
     blockers = []
 
@@ -1683,6 +1702,10 @@ def build_interpretation_text(
         trend,
     )
 
+    trend_confidence = build_trend_confidence_section(
+        confidence,
+    )
+
     score_limiter = build_score_limiter_section(opportunity)
 
     return f"""Recommendation: {best.recommendation}
@@ -1693,6 +1716,8 @@ Summary:
 {opportunity_history}
 
 {opportunity_trend}
+
+{trend_confidence}
 
 {score_limiter}
 

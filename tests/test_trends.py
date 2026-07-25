@@ -1,5 +1,6 @@
 from scripts.bch_solo_rental_strike_engine import (
     analyze_metric,
+    build_trend_confidence_section,
     calculate_metric_trend,
     calculate_numeric_trend,
     calculate_trend_confidence,
@@ -244,3 +245,19 @@ def test_calculate_trend_confidence_low():
     confidence = calculate_trend_confidence(analysis)
 
     assert confidence["level"] == "LOW"
+
+def test_build_trend_confidence_section_high():
+    confidence = {
+        "level": "HIGH",
+        "direction": "IMPROVING",
+        "history_count": 10,
+        "consecutive_moves": 6,
+    }
+
+    text = build_trend_confidence_section(confidence)
+
+    assert "Trend Confidence" in text
+    assert "HIGH" in text
+    assert "IMPROVING" in text
+    assert "10" in text
+    assert "6" in text
