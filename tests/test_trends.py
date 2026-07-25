@@ -1,12 +1,14 @@
 from scripts.bch_solo_rental_strike_engine import (
     analyze_metric,
     build_trend_confidence_section,
+    build_volatility_section,
     calculate_metric_trend,
     calculate_metric_volatility,
     calculate_numeric_trend,
     calculate_trend_confidence,
     calculate_trend_persistence,
 )
+import pytest
 
 def test_calculate_numeric_trend_improving():
     trend = calculate_numeric_trend(
@@ -279,6 +281,19 @@ def test_calculate_metric_volatility_low():
 
     assert volatility["count"] == 5
     assert volatility["level"] == "LOW"
+    assert volatility["std_dev"] == pytest.approx(
+        0.4898979485566356,
+        rel=1e-6,
+    )
+    assert volatility["mean"] == pytest.approx(
+        70.4,
+        rel=1e-6,
+    )
+    assert volatility["coefficient_of_variation"] == pytest.approx(
+        0.006958777678361301,
+        rel=1e-6,
+    )
+    assert volatility["coefficient_of_variation"] < 0.01
 
 def test_calculate_metric_volatility_high():
     history_rows = [
@@ -323,4 +338,67 @@ def test_calculate_metric_volatility_empty_history():
 
     assert volatility["count"] == 0
     assert volatility["range"] == 0.0
+    assert volatility["std_dev"] == 0.0
+    assert volatility["mean"] == 0.0
+    assert volatility["coefficient_of_variation"] == 0.0
     assert volatility["level"] == "LOW"
+
+def test_calculate_metric_volatility_uses_relative_variability():
+    history_rows = [
+        {"opportunity_score": 1000},
+        {"opportunity_score": 1015},
+        {"opportunity_score": 990},
+        {"opportunity_score": 1010},
+        {"opportunity_score": 995},
+    ]
+
+    volatility = calculate_metric_volatility(
+        history_rows,
+        "opportunity_score",
+    )
+
+    assert volatility["range"] == 25.0
+    assert volatility["coefficient_of_variation"] < 0.02
+    assert volatility["level"] == "LOW"
+
+def test_build_volatility_section_low():
+    volatility = {
+        "count": 5,
+        "range": 1.0,
+        "std_dev": 0.49,
+        "level": "LOW",
+    }
+
+    text = build_volatility_section(volatility)
+
+    assert "LOW" in text
+    assert "Volatility" in text
+    assert "0.49" in text
+    assert "stable" in text.lower()
+    assert "recent history" in text.lower()
+
+def test_build_volatility_section_medium():
+    volatility = {
+        "count": 5,
+        "range": 13.0,
+        "std_dev": 4.45,
+        "level": "MEDIUM",
+    }
+
+    text = build_volatility_section(volatility)
+
+    assert "MEDIUM" in text
+    assert "moderate" in text.lower()
+
+def test_build_volatility_section_high():
+    volatility = {
+        "count": 5,
+        "range": 70.0,
+        "std_dev": 30.27,
+        "level": "HIGH",
+    }
+
+    text = build_volatility_section(volatility)
+
+    assert "HIGH" in text
+    assert "highly volatile" in text.lower()

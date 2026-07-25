@@ -17,6 +17,8 @@ import hmac
 import sqlite3
 import requests
 
+from statistics import mean, pstdev
+
 
 # =============================================================================
 # CONFIG
@@ -2381,14 +2383,20 @@ def calculate_metric_volatility(
         return {
             "count": 0,
             "range": 0.0,
+            "std_dev": 0.0,
+            "mean": 0.0,
+            "coefficient_of_variation": 0.0,
             "level": "LOW",
         }
 
     value_range = max(values) - min(values)
+    std_dev = pstdev(values)
+    mean_value = mean(values)
+    coefficient_of_variation = std_dev / mean_value
 
-    if value_range >= 50:
+    if coefficient_of_variation >= 0.10:
         level = "HIGH"
-    elif value_range >= 10:
+    elif coefficient_of_variation >= 0.02:
         level = "MEDIUM"
     else:
         level = "LOW"
@@ -2396,8 +2404,35 @@ def calculate_metric_volatility(
     return {
         "count": len(values),
         "range": value_range,
+        "std_dev": std_dev,
+        "mean": mean_value,
+        "coefficient_of_variation": coefficient_of_variation,
         "level": level,
     }
+
+def build_volatility_section(
+    volatility: Dict[str, Any],
+) -> str:
+    """
+    Build the volatility presentation section.
+    """
+    level = volatility.get("level", "")
+    std_dev = volatility.get("std_dev", 0.0)
+
+    descriptions = {
+        "LOW": "Opportunity has remained stable over recent history.",
+        "MEDIUM": "Opportunity has shown moderate variability over recent history.",
+        "HIGH": "Opportunity has been highly volatile over recent history.",
+    }
+
+    description = descriptions.get(level, "")
+
+    return f"""Volatility
+
+    {level}
+    σ = {std_dev:.2f}
+
+    {description}"""
 
 def calculate_trend_confidence(
     analysis: Dict[str, Any],
