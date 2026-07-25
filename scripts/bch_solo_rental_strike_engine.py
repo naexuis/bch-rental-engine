@@ -2241,6 +2241,8 @@ def calculate_numeric_trend(
     previous = values[-2]
     current = values[-1]
     change = round(current - previous, 1)
+    velocity_info = calculate_trend_velocity(values)
+    velocity = velocity_info["velocity"]
 
     if change > 0:
         direction = "IMPROVING"
@@ -2254,6 +2256,7 @@ def calculate_numeric_trend(
         "current": current,
         "previous": previous,
         "change": change,
+        "velocity": velocity,
         "direction": direction,
     }
 
