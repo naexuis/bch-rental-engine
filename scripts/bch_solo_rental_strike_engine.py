@@ -1606,7 +1606,7 @@ def build_interpretation_text(
     best: StrikeScenario,
     market_regime: str,
     opportunity: Dict[str, Any],
-    trend: Dict[str, Any],
+    analysis: Dict[str, Any],
     frontier_summary: Dict[str, Any],
 ) -> str:
     prob_pct = best.prob_1plus * 100
@@ -1614,6 +1614,8 @@ def build_interpretation_text(
     roi = best.risk_adjusted_roi_pct
     premium = best.premium_discount_pct
     action = opportunity.get("action", "UNKNOWN")
+
+    trend = analysis.get("trend", {})
 
     blockers = []
 
@@ -2498,7 +2500,7 @@ def run_engine() -> Dict[str, Any]:
 
     history = get_history_rows(limit=25)
 
-    score_trend = calculate_metric_trend(
+    analysis = analyze_metric(
         history,
         "opportunity_score",
     )
@@ -2533,7 +2535,7 @@ def run_engine() -> Dict[str, Any]:
         best=best,
         market_regime=market_regime,
         opportunity=opportunity,
-        trend=score_trend,
+        analysis=analysis,
         frontier_summary=frontier_summary,
     )
 
