@@ -1,5 +1,7 @@
 from scripts.bch_solo_rental_strike_engine import (
+    StrikeScenario,
     analyze_metric,
+    build_interpretation_text,
     build_trend_confidence_section,
     build_volatility_section,
     calculate_metric_trend,
@@ -7,6 +9,7 @@ from scripts.bch_solo_rental_strike_engine import (
     calculate_numeric_trend,
     calculate_trend_confidence,
     calculate_trend_persistence,
+    calculate_trend_velocity,
 )
 import pytest
 
@@ -184,6 +187,9 @@ def test_analyze_metric_improving():
     assert analysis["metric"] == "score"
     assert analysis["trend"]["direction"] == "IMPROVING"
     assert analysis["persistence"]["consecutive_moves"] == 3
+    assert "confidence" in analysis
+    assert "volatility" in analysis
+    assert analysis["volatility"]["level"] == "HIGH"
 
 def test_analyze_metric_empty():
     analysis = analyze_metric([], "score")
@@ -366,6 +372,8 @@ def test_build_volatility_section_low():
         "count": 5,
         "range": 1.0,
         "std_dev": 0.49,
+        "mean": 70.4,
+        "coefficient_of_variation": 0.006958777678361301,
         "level": "LOW",
     }
 
@@ -374,6 +382,8 @@ def test_build_volatility_section_low():
     assert "LOW" in text
     assert "Volatility" in text
     assert "0.49" in text
+    assert "CV" in text
+    assert "0.70%" in text
     assert "stable" in text.lower()
     assert "recent history" in text.lower()
 
@@ -402,3 +412,89 @@ def test_build_volatility_section_high():
 
     assert "HIGH" in text
     assert "highly volatile" in text.lower()
+
+def test_build_interpretation_text_includes_volatility():
+    best = StrikeScenario(
+        source="mrr",
+        name="Test Rig",
+        budget_usd=300.0,
+        budget_btc=0.003,
+        hashrate_ph=300.0,
+        hashrate_eh=0.300,
+        duration_hours=1.0,
+        cost_btc=0.003,
+        cost_usd=300.0,
+        expected_blocks=0.75,
+        prob_0_blocks=0.47,
+        prob_1plus=0.53,
+        prob_2plus=0.10,
+        expected_bch_gross=3.125,
+        expected_bch_net=3.078,
+        expected_revenue_usd=620.0,
+        expected_profit_usd=320.0,
+        roi_pct=106.7,
+        risk_adjusted_profit_usd=150.0,
+        risk_adjusted_roi_pct=50.0,
+        profit_if_0_blocks=-300.0,
+        profit_if_1_block=320.0,
+        profit_if_2_blocks=940.0,
+        break_even_price_btc_per_ph_day=0.40,
+        current_price_btc_per_ph_day=0.35,
+        fair_value_ratio=1.10,
+        premium_discount_pct=-12.5,
+        strike_score=90.0,
+        strike_grade="A",
+        alert_tier="HIGH",
+        recommendation="RENT",
+        strike_type="TEST",
+    )
+
+def test_calculate_trend_velocity_improving():
+    velocity = calculate_trend_velocity(
+        [10, 20, 30, 40],
+    )
+
+    assert velocity["count"] == 4
+    assert velocity["change"] == 30.0
+    assert velocity["velocity"] == 10.0
+    assert velocity["direction"] == "IMPROVING"
+
+def test_calculate_trend_velocity_declining():
+    velocity = calculate_trend_velocity(
+        [40, 30, 20, 10],
+    )
+
+    assert velocity["count"] == 4
+    assert velocity["change"] == -30.0
+    assert velocity["velocity"] == -10.0
+    assert velocity["direction"] == "DECLINING"
+
+def test_calculate_trend_velocity_stable():
+    velocity = calculate_trend_velocity(
+        [25, 25, 25, 25],
+    )
+
+    assert velocity["count"] == 4
+    assert velocity["change"] == 0.0
+    assert velocity["velocity"] == 0.0
+    assert velocity["direction"] == "STABLE"
+
+def test_calculate_trend_velocity_single_value():
+    velocity = calculate_trend_velocity(
+        [25],
+    )
+
+    assert velocity["count"] == 1
+    assert velocity["change"] is None
+    assert velocity["velocity"] is None
+    assert velocity["direction"] == "UNKNOWN"
+
+def test_calculate_trend_velocity_empty():
+    velocity = calculate_trend_velocity(
+        [],
+    )
+
+    assert velocity["count"] == 0
+    assert velocity["change"] is None
+    assert velocity["velocity"] is None
+    assert velocity["direction"] == "UNKNOWN"

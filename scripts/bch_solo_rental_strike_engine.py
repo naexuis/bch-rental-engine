@@ -1708,6 +1708,10 @@ def build_interpretation_text(
         confidence,
     )
 
+    volatility = build_volatility_section(
+        analysis.get("volatility", {}),
+    )
+
     score_limiter = build_score_limiter_section(opportunity)
 
     return f"""Recommendation: {best.recommendation}
@@ -1720,6 +1724,8 @@ Summary:
 {opportunity_trend}
 
 {trend_confidence}
+
+{volatility}
 
 {score_limiter}
 
@@ -2323,6 +2329,34 @@ def calculate_trend_persistence(
         "consecutive_moves": consecutive_moves,
     }
 
+def calculate_trend_velocity(
+    values: List[float],
+) -> Dict[str, Any]:
+    count = len(values)
+    if count < 2:
+        return {
+            "count": count,
+            "change": None,
+            "velocity": None,
+            "direction": "UNKNOWN",
+        }
+    change = float(values[-1] - values[0])
+    velocity = change / (count - 1)
+
+    if velocity > 0:
+        direction = "IMPROVING"
+    elif velocity < 0:
+        direction = "DECLINING"
+    else:
+        direction = "STABLE"
+
+    return {
+        "count": count,
+        "change": change,
+        "velocity": velocity,
+        "direction": direction,
+    }
+
 def analyze_metric(
     history_rows: List[Dict[str, Any]],
     metric: str,
@@ -2360,6 +2394,11 @@ def analyze_metric(
 
     analysis["confidence"] = calculate_trend_confidence(
         analysis,
+    )
+
+    analysis["volatility"] = calculate_metric_volatility(
+        history_rows,
+        metric,
     )
 
     return analysis
@@ -2418,6 +2457,7 @@ def build_volatility_section(
     """
     level = volatility.get("level", "")
     std_dev = volatility.get("std_dev", 0.0)
+    cv = volatility.get("coefficient_of_variation", 0.0)
 
     descriptions = {
         "LOW": "Opportunity has remained stable over recent history.",
@@ -2431,6 +2471,7 @@ def build_volatility_section(
 
     {level}
     σ = {std_dev:.2f}
+    CV = {cv:.2%}
 
     {description}"""
 
