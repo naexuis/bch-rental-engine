@@ -22,6 +22,7 @@ def test_calculate_numeric_trend_improving():
     assert trend["current"] == 55
     assert trend["previous"] == 52
     assert trend["change"] == 3
+    assert trend["velocity"] == 2.5
     assert trend["direction"] == "IMPROVING"
 
 def test_calculate_numeric_trend_declining():
