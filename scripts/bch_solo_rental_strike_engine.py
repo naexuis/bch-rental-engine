@@ -2362,6 +2362,43 @@ def analyze_metric(
 
     return analysis
 
+def calculate_metric_volatility(
+    history_rows: List[Dict[str, Any]],
+    metric: str,
+) -> Dict[str, Any]:
+    """
+    Calculate volatility statistics for a metric.
+    """
+    values = []
+
+    for row in history_rows:
+        value = row.get(metric)
+
+        if isinstance(value, (int, float)):
+            values.append(float(value))
+
+    if not values:
+        return {
+            "count": 0,
+            "range": 0.0,
+            "level": "LOW",
+        }
+
+    value_range = max(values) - min(values)
+
+    if value_range >= 50:
+        level = "HIGH"
+    elif value_range >= 10:
+        level = "MEDIUM"
+    else:
+        level = "LOW"
+
+    return {
+        "count": len(values),
+        "range": value_range,
+        "level": level,
+    }
+
 def calculate_trend_confidence(
     analysis: Dict[str, Any],
 ) -> Dict[str, Any]:

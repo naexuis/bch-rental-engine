@@ -2,6 +2,7 @@ from scripts.bch_solo_rental_strike_engine import (
     analyze_metric,
     build_trend_confidence_section,
     calculate_metric_trend,
+    calculate_metric_volatility,
     calculate_numeric_trend,
     calculate_trend_confidence,
     calculate_trend_persistence,
@@ -261,3 +262,65 @@ def test_build_trend_confidence_section_high():
     assert "IMPROVING" in text
     assert "10" in text
     assert "6" in text
+
+def test_calculate_metric_volatility_low():
+    history_rows = [
+        {"opportunity_score": 70},
+        {"opportunity_score": 71},
+        {"opportunity_score": 70},
+        {"opportunity_score": 71},
+        {"opportunity_score": 70},
+    ]
+
+    volatility = calculate_metric_volatility(
+        history_rows,
+        "opportunity_score",
+    )
+
+    assert volatility["count"] == 5
+    assert volatility["level"] == "LOW"
+
+def test_calculate_metric_volatility_high():
+    history_rows = [
+        {"opportunity_score": 30},
+        {"opportunity_score": 90},
+        {"opportunity_score": 25},
+        {"opportunity_score": 95},
+        {"opportunity_score": 35},
+    ]
+
+    volatility = calculate_metric_volatility(
+        history_rows,
+        "opportunity_score",
+    )
+
+    assert volatility["count"] == 5
+    assert volatility["level"] == "HIGH"
+    assert "range" in volatility
+
+def test_calculate_metric_volatility_medium():
+    history_rows = [
+        {"opportunity_score": 55},
+        {"opportunity_score": 65},
+        {"opportunity_score": 60},
+        {"opportunity_score": 68},
+        {"opportunity_score": 58},
+    ]
+
+    volatility = calculate_metric_volatility(
+        history_rows,
+        "opportunity_score",
+    )
+
+    assert volatility["count"] == 5
+    assert volatility["level"] == "MEDIUM"
+
+def test_calculate_metric_volatility_empty_history():
+    volatility = calculate_metric_volatility(
+        [],
+        "opportunity_score",
+    )
+
+    assert volatility["count"] == 0
+    assert volatility["range"] == 0.0
+    assert volatility["level"] == "LOW"
