@@ -2392,6 +2392,15 @@ def calculate_trend_strength(
         and volatility == "LOW"
         and persistence >= 3
         and direction in {"IMPROVING", "DECLINING"}
+        and velocity is not None
+        and velocity >= 10.0
+    ):
+        strength = "STRONG"
+    elif (
+        confidence == "MEDIUM"
+        and volatility == "LOW"
+        and persistence >= 3
+        and direction in {"IMPROVING", "DECLINING"}
     ):
         strength = "MODERATE"
     else:

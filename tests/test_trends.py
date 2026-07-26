@@ -573,3 +573,14 @@ def test_calculate_trend_strength_medium_confidence_moderate():
     )
 
     assert strength["strength"] == "MODERATE"
+
+def test_calculate_trend_strength_promotes_moderate_with_high_velocity():
+    strength = calculate_trend_strength(
+        confidence="MEDIUM",
+        volatility="LOW",
+        persistence=3,
+        direction="IMPROVING",
+        velocity=10.0,
+    )
+
+    assert strength["strength"] == "STRONG"
