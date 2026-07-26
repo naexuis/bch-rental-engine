@@ -1,4 +1,4 @@
-BCH Rental Engine Installation Guide
+# BCH Rental Engine Installation Guide
 
 This guide explains how to install the BCH Rental Engine on a new Linux server, Umbrel system, cloud virtual machine, or development workstation.
 

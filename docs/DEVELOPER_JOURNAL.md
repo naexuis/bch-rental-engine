@@ -1,6 +1,4 @@
-Here is a revised version that reflects the project’s progression through Recommendation History, explainability, Trend Intelligence, strict TDD, deployment separation, and the planned Forecast Intelligence phase.
-
-BCH Rental Engine Developer Journal
+# BCH Rental Engine Developer Journal
 
 The Developer Journal is a chronological and reflective record of the BCH Rental Engine’s development.
 
@@ -1418,5 +1416,3 @@ Git history records individual changes.
 This journal explains why those changes were made and how the project’s philosophy evolved.
 
 If the BCH Rental Engine is revisited years from now, these notes should provide enough context to understand not only the implementation, but also the reasoning, trade-offs, mistakes, and lessons that shaped the platform.
-
-This version can replace docs/DEVELOPER_JOURNAL.md. It preserves the original reflective tone while documenting the major technical progression from optimization and scoring through Recommendation History and the current Trend Intelligence framework.
