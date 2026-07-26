@@ -551,3 +551,13 @@ def test_build_trend_strength_section_very_strong():
 
     assert "Trend Strength" in text
     assert "VERY_STRONG" in text
+
+def test_calculate_trend_strength_high_confidence_strong():
+    strength = calculate_trend_strength(
+        confidence="HIGH",
+        volatility="LOW",
+        persistence=5,
+        direction="IMPROVING",
+    )
+
+    assert strength["strength"] == "STRONG"

@@ -2379,6 +2379,13 @@ def calculate_trend_strength(
         and direction in {"IMPROVING", "DECLINING"}
     ):
         strength = "VERY_STRONG"
+    elif (
+        confidence == "HIGH"
+        and volatility == "LOW"
+        and persistence >= 5
+        and direction in {"IMPROVING", "DECLINING"}
+    ):
+        strength = "STRONG"
     else:
         strength = "UNKNOWN"
 
