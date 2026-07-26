@@ -2423,6 +2423,12 @@ def analyze_metric(
         history_rows,
         metric,
     )
+    analysis["trend_strength"] = calculate_trend_strength(
+        confidence=analysis["confidence"]["level"],
+        volatility=analysis["volatility"]["level"],
+        persistence=analysis["persistence"]["consecutive_moves"],
+        direction=analysis["trend"]["direction"],
+    )
 
     return analysis
 

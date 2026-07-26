@@ -193,6 +193,7 @@ def test_analyze_metric_improving():
     assert "confidence" in analysis
     assert "volatility" in analysis
     assert analysis["volatility"]["level"] == "HIGH"
+    assert "trend_strength" in analysis
 
 def test_analyze_metric_empty():
     analysis = analyze_metric([], "score")
