@@ -2,30 +2,20 @@ from scripts.bch_solo_rental_strike_engine import (
     StrikeScenario,
     analyze_metric,
     build_interpretation_text,
+    build_trend_acceleration_section,
     build_trend_confidence_section,
     build_trend_strength_section,
     build_volatility_section,
     calculate_metric_trend,
     calculate_metric_volatility,
     calculate_numeric_trend,
+    calculate_trend_acceleration,
     calculate_trend_confidence,
     calculate_trend_persistence,
     calculate_trend_strength,
     calculate_trend_velocity,
 )
 import pytest
-
-def test_calculate_numeric_trend_improving():
-    trend = calculate_numeric_trend(
-        [50, 52, 55],
-    )
-
-    assert trend["count"] == 3
-    assert trend["current"] == 55
-    assert trend["previous"] == 52
-    assert trend["change"] == 3
-    assert trend["velocity"] == 2.5
-    assert trend["direction"] == "IMPROVING"
 
 def test_calculate_numeric_trend_declining():
     trend = calculate_numeric_trend(
@@ -195,6 +185,8 @@ def test_analyze_metric_improving():
     assert analysis["volatility"]["level"] == "HIGH"
     assert "trend_strength" in analysis
     assert analysis["trend"]["velocity"] == 10
+    assert "acceleration" in analysis
+    assert analysis["acceleration"]["direction"] == "STEADY"
 
 def test_analyze_metric_empty():
     analysis = analyze_metric([], "score")
@@ -418,6 +410,83 @@ def test_build_volatility_section_high():
     assert "HIGH" in text
     assert "highly volatile" in text.lower()
 
+def test_build_interpretation_text_includes_acceleration():
+    best = StrikeScenario(
+        source="mrr",
+        name="Test Rig",
+        budget_usd=300.0,
+        budget_btc=0.003,
+        hashrate_ph=300.0,
+        hashrate_eh=0.300,
+        duration_hours=1.0,
+        cost_btc=0.003,
+        cost_usd=300.0,
+        expected_blocks=0.75,
+        prob_0_blocks=0.47,
+        prob_1plus=0.53,
+        prob_2plus=0.10,
+        expected_bch_gross=3.125,
+        expected_bch_net=3.078,
+        expected_revenue_usd=620.0,
+        expected_profit_usd=320.0,
+        roi_pct=106.7,
+        risk_adjusted_profit_usd=150.0,
+        risk_adjusted_roi_pct=50.0,
+        profit_if_0_blocks=-300.0,
+        profit_if_1_block=320.0,
+        profit_if_2_blocks=940.0,
+        break_even_price_btc_per_ph_day=0.40,
+        current_price_btc_per_ph_day=0.35,
+        fair_value_ratio=1.10,
+        premium_discount_pct=-12.5,
+        strike_score=90.0,
+        strike_grade="A",
+        alert_tier="HIGH",
+        recommendation="RENT",
+        strike_type="TEST",
+    )
+
+    text = build_interpretation_text(
+        best=best,
+        market_regime="TEST",
+        opportunity={
+            "action": "RENT",
+            "score": 90,
+        },
+        analysis={
+            "trend": {
+                "direction": "IMPROVING",
+                "velocity": 7.5,
+            },
+            "confidence": {
+                "level": "MEDIUM",
+            },
+            "trend_strength": {
+                "strength": "MODERATE",
+            },
+            "volatility": {
+                "count": 5,
+                "range": 1.0,
+                "std_dev": 0.49,
+                "mean": 70.4,
+                "coefficient_of_variation": 0.006958777678361301,
+                "level": "LOW",
+            },
+            "acceleration": {
+                "previous_change": 5.0,
+                "latest_change": 10.0,
+                "acceleration": 5.0,
+                "direction": "ACCELERATING",
+            },
+        },
+        frontier_summary={},
+    )
+
+    assert "Trend acceleration" in text
+    assert "accelerating" in text.lower()
+    assert "10.0" in text
+    assert "5.0" in text
+
 def test_build_interpretation_text_includes_volatility():
     best = StrikeScenario(
         source="mrr",
@@ -584,3 +653,228 @@ def test_calculate_trend_strength_promotes_moderate_with_high_velocity():
     )
 
     assert strength["strength"] == "STRONG"
+
+def test_calculate_trend_acceleration_improving():
+    acceleration = calculate_trend_acceleration(
+        [40, 45, 55],
+    )
+
+    assert acceleration["count"] == 3
+    assert acceleration["previous_change"] == 5.0
+    assert acceleration["latest_change"] == 10.0
+    assert acceleration["acceleration"] == 5.0
+    assert acceleration["direction"] == "ACCELERATING"
+
+def test_calculate_trend_acceleration_declining_faster():
+    acceleration = calculate_trend_acceleration(
+        [60, 55, 45],
+    )
+
+    assert acceleration["count"] == 3
+    assert acceleration["previous_change"] == -5.0
+    assert acceleration["latest_change"] == -10.0
+    assert acceleration["acceleration"] == -5.0
+    assert acceleration["direction"] == "ACCELERATING"
+
+def test_calculate_trend_acceleration_reversing():
+    acceleration = calculate_trend_acceleration(
+        [40, 50, 45],
+    )
+
+    assert acceleration["count"] == 3
+    assert acceleration["previous_change"] == 10.0
+    assert acceleration["latest_change"] == -5.0
+    assert acceleration["acceleration"] == -15.0
+    assert acceleration["direction"] == "REVERSING"
+
+def test_calculate_trend_acceleration_reversing_from_decline():
+    acceleration = calculate_trend_acceleration(
+        [60, 50, 55],
+    )
+
+    assert acceleration["count"] == 3
+    assert acceleration["previous_change"] == -10.0
+    assert acceleration["latest_change"] == 5.0
+    assert acceleration["acceleration"] == 15.0
+    assert acceleration["direction"] == "REVERSING"
+
+def test_calculate_trend_acceleration_improving_but_decelerating():
+    acceleration = calculate_trend_acceleration(
+        [40, 50, 55],
+    )
+
+    assert acceleration["count"] == 3
+    assert acceleration["previous_change"] == 10.0
+    assert acceleration["latest_change"] == 5.0
+    assert acceleration["acceleration"] == -5.0
+    assert acceleration["direction"] == "DECELERATING"
+
+def test_calculate_trend_acceleration_declining_but_decelerating():
+    acceleration = calculate_trend_acceleration(
+        [60, 50, 45],
+    )
+
+    assert acceleration["count"] == 3
+    assert acceleration["previous_change"] == -10.0
+    assert acceleration["latest_change"] == -5.0
+    assert acceleration["acceleration"] == 5.0
+    assert acceleration["direction"] == "DECELERATING"
+
+def test_calculate_trend_acceleration_steady():
+    acceleration = calculate_trend_acceleration(
+        [40, 45, 50],
+    )
+
+    assert acceleration["count"] == 3
+    assert acceleration["previous_change"] == 5.0
+    assert acceleration["latest_change"] == 5.0
+    assert acceleration["acceleration"] == 0.0
+    assert acceleration["direction"] == "STEADY"
+
+
+def test_calculate_trend_acceleration_single_value():
+    acceleration = calculate_trend_acceleration(
+        [40],
+    )
+
+    assert acceleration["count"] == 1
+    assert acceleration["previous_change"] is None
+    assert acceleration["latest_change"] is None
+    assert acceleration["acceleration"] is None
+    assert acceleration["direction"] == "UNKNOWN"
+
+
+def test_calculate_trend_acceleration_two_values():
+    acceleration = calculate_trend_acceleration(
+        [40, 45],
+    )
+
+    assert acceleration["count"] == 2
+    assert acceleration["previous_change"] is None
+    assert acceleration["latest_change"] is None
+    assert acceleration["acceleration"] is None
+    assert acceleration["direction"] == "UNKNOWN"
+
+
+def test_calculate_trend_acceleration_empty():
+    acceleration = calculate_trend_acceleration([])
+
+    assert acceleration["count"] == 0
+    assert acceleration["previous_change"] is None
+    assert acceleration["latest_change"] is None
+    assert acceleration["acceleration"] is None
+    assert acceleration["direction"] == "UNKNOWN"
+
+def test_calculate_numeric_trend_improving():
+    trend = calculate_numeric_trend(
+        [50, 52, 55],
+    )
+
+    assert trend["count"] == 3
+    assert trend["current"] == 55
+    assert trend["previous"] == 52
+    assert trend["change"] == 3
+    assert trend["velocity"] == 2.5
+    assert trend["direction"] == "IMPROVING"
+
+    assert trend["acceleration"]["previous_change"] == 2.0
+    assert trend["acceleration"]["latest_change"] == 3.0
+    assert trend["acceleration"]["acceleration"] == 1.0
+    assert trend["acceleration"]["direction"] == "ACCELERATING"
+
+def test_build_trend_acceleration_section_accelerating():
+    text = build_trend_acceleration_section(
+        {
+            "previous_change": 5.0,
+            "latest_change": 10.0,
+            "acceleration": 5.0,
+            "direction": "ACCELERATING",
+        }
+    )
+
+    assert "accelerating" in text.lower()
+    assert "10.0" in text
+    assert "5.0" in text
+
+
+def test_build_trend_acceleration_section_decelerating():
+    text = build_trend_acceleration_section(
+        {
+            "previous_change": 10.0,
+            "latest_change": 5.0,
+            "acceleration": -5.0,
+            "direction": "DECELERATING",
+        }
+    )
+
+    assert "decelerating" in text.lower()
+
+
+def test_build_trend_acceleration_section_reversing():
+    text = build_trend_acceleration_section(
+        {
+            "previous_change": 10.0,
+            "latest_change": -5.0,
+            "acceleration": -15.0,
+            "direction": "REVERSING",
+        }
+    )
+
+    assert "reversing" in text.lower()
+
+
+def test_build_trend_acceleration_section_unknown():
+    text = build_trend_acceleration_section(
+        {
+            "previous_change": None,
+            "latest_change": None,
+            "acceleration": None,
+            "direction": "UNKNOWN",
+        }
+    )
+
+    assert "not enough history" in text.lower()
+
+def test_analyze_metric_steady_acceleration():
+    history = [
+        {"score": 40},
+        {"score": 30},
+        {"score": 20},
+        {"score": 15},
+    ]
+
+    analysis = analyze_metric(history, "score")
+
+    assert analysis["acceleration"]["previous_change"] == 10.0
+    assert analysis["acceleration"]["latest_change"] == 10.0
+    assert analysis["acceleration"]["direction"] == "STEADY"
+
+def test_analyze_metric_true_accelerating():
+    history = [
+        {"score": 40},
+        {"score": 25},
+        {"score": 15},
+        {"score": 10},
+    ]
+
+    analysis = analyze_metric(history, "score")
+
+    assert analysis["acceleration"]["previous_change"] == 10.0
+    assert analysis["acceleration"]["latest_change"] == 15.0
+    assert analysis["acceleration"]["acceleration"] == 5.0
+    assert analysis["acceleration"]["direction"] == "ACCELERATING"
+
+def test_analyze_metric_reversing():
+    history = [
+        {"score": 25},
+        {"score": 30},
+        {"score": 20},
+        {"score": 10},
+    ]
+
+    analysis = analyze_metric(history, "score")
+
+    assert analysis["acceleration"]["previous_change"] == 10.0
+    assert analysis["acceleration"]["latest_change"] == -5.0
+    assert analysis["acceleration"]["acceleration"] == -15.0
+    assert analysis["acceleration"]["direction"] == "REVERSING"

@@ -1716,6 +1716,10 @@ def build_interpretation_text(
         analysis.get("volatility", {}),
     )
 
+    acceleration_section = build_trend_acceleration_section(
+        analysis.get("acceleration", {})
+    )
+
     score_limiter = build_score_limiter_section(opportunity)
 
     return f"""Recommendation: {best.recommendation}
@@ -1730,6 +1734,8 @@ Summary:
 {trend_confidence}
 
 {trend_strength}
+
+{acceleration_section}
 
 {volatility}
 
@@ -2232,6 +2238,8 @@ def calculate_numeric_trend(
             "current": None,
             "previous": None,
             "change": None,
+            "velocity": None,
+            "acceleration": calculate_trend_acceleration(values),
             "direction": "UNKNOWN",
         }
 
@@ -2241,6 +2249,8 @@ def calculate_numeric_trend(
             "current": values[-1],
             "previous": None,
             "change": None,
+            "velocity": None,
+            "acceleration": calculate_trend_acceleration(values),
             "direction": "UNKNOWN",
         }
 
@@ -2249,6 +2259,7 @@ def calculate_numeric_trend(
     change = round(current - previous, 1)
     velocity_info = calculate_trend_velocity(values)
     velocity = velocity_info["velocity"]
+    acceleration = calculate_trend_acceleration(values)
 
     if change > 0:
         direction = "IMPROVING"
@@ -2263,6 +2274,7 @@ def calculate_numeric_trend(
         "previous": previous,
         "change": change,
         "velocity": velocity,
+        "acceleration": acceleration,
         "direction": direction,
     }
 
@@ -2366,6 +2378,58 @@ def calculate_trend_velocity(
         "direction": direction,
     }
 
+def calculate_trend_acceleration(
+    values: List[float],
+) -> Dict[str, Any]:
+    """
+    Measure whether the most recent numeric movement is speeding up
+    or slowing down relative to the immediately preceding movement.
+
+    Acceleration is calculated as:
+
+        latest_change - previous_change
+
+    Returns:
+        count
+        previous_change
+        latest_change
+        acceleration
+        direction
+    """
+    count = len(values)
+
+    if count < 3:
+        return {
+            "count": count,
+            "previous_change": None,
+            "latest_change": None,
+            "acceleration": None,
+            "direction": "UNKNOWN",
+        }
+
+    previous_change = float(values[-2] - values[-3])
+    latest_change = float(values[-1] - values[-2])
+    acceleration = latest_change - previous_change
+
+    if previous_change == 0 and latest_change == 0:
+        direction = "STEADY"
+    elif previous_change * latest_change < 0:
+        direction = "REVERSING"
+    elif abs(latest_change) > abs(previous_change):
+        direction = "ACCELERATING"
+    elif abs(latest_change) < abs(previous_change):
+        direction = "DECELERATING"
+    else:
+        direction = "STEADY"
+
+    return {
+        "count": count,
+        "previous_change": previous_change,
+        "latest_change": latest_change,
+        "acceleration": acceleration,
+        "direction": direction,
+    }
+
 def calculate_trend_strength(
     confidence: str,
     volatility: str,
@@ -2410,6 +2474,49 @@ def calculate_trend_strength(
         "strength": strength,
     }
 
+def build_trend_acceleration_section(
+    acceleration: Dict[str, Any],
+) -> str:
+    """
+    Build a human-readable explanation of trend acceleration.
+    """
+    direction = acceleration.get("direction", "UNKNOWN")
+    previous_change = acceleration.get("previous_change")
+    latest_change = acceleration.get("latest_change")
+
+    if direction == "UNKNOWN":
+        return (
+            "Trend acceleration: Not enough history is available "
+            "to determine whether the metric is speeding up or slowing down."
+        )
+
+    if direction == "ACCELERATING":
+        return (
+            "Trend acceleration: The trend is accelerating. "
+            f"The latest movement was {latest_change:.1f}, compared with "
+            f"{previous_change:.1f} in the preceding period."
+        )
+
+    if direction == "DECELERATING":
+        return (
+            "Trend acceleration: The trend is decelerating. "
+            f"The latest movement was {latest_change:.1f}, compared with "
+            f"{previous_change:.1f} in the preceding period."
+        )
+
+    if direction == "REVERSING":
+        return (
+            "Trend acceleration: The trend is reversing direction. "
+            f"The movement changed from {previous_change:.1f} to "
+            f"{latest_change:.1f}."
+        )
+
+    return (
+        "Trend acceleration: The trend is steady. "
+        f"The latest movement was {latest_change:.1f}, matching the "
+        f"preceding movement of {previous_change:.1f}."
+    )
+
 def analyze_metric(
     history_rows: List[Dict[str, Any]],
     metric: str,
@@ -2438,11 +2545,13 @@ def analyze_metric(
             values.append(float(value))
 
     persistence = calculate_trend_persistence(values)
+    acceleration = calculate_trend_acceleration(values)
 
     analysis = {
         "metric": metric,
         "trend": trend,
         "persistence": persistence,
+        "acceleration": acceleration,
     }
 
     analysis["confidence"] = calculate_trend_confidence(
