@@ -14,6 +14,7 @@ from scripts.bch_solo_rental_strike_engine import (
     calculate_trend_persistence,
     calculate_trend_strength,
     calculate_trend_velocity,
+    forecast_metric,
 )
 import pytest
 
@@ -878,3 +879,231 @@ def test_analyze_metric_reversing():
     assert analysis["acceleration"]["latest_change"] == -5.0
     assert analysis["acceleration"]["acceleration"] == -15.0
     assert analysis["acceleration"]["direction"] == "REVERSING"
+
+def test_forecast_metric_improving():
+    forecast = forecast_metric(
+        [50, 52, 55],
+    )
+
+    assert forecast["count"] == 3
+    assert forecast["current"] == 55.0
+    assert forecast["velocity"] == 2.5
+    assert forecast["forecast"] == 57.5
+    assert forecast["horizon"] == 1
+    assert forecast["direction"] == "IMPROVING"
+    assert forecast["method"] == "LINEAR_VELOCITY"
+
+
+def test_forecast_metric_declining():
+    forecast = forecast_metric(
+        [60, 55, 45],
+    )
+
+    assert forecast["count"] == 3
+    assert forecast["current"] == 45.0
+    assert forecast["velocity"] == -7.5
+    assert forecast["forecast"] == 37.5
+    assert forecast["horizon"] == 1
+    assert forecast["direction"] == "DECLINING"
+    assert forecast["method"] == "LINEAR_VELOCITY"
+
+
+def test_forecast_metric_stable():
+    forecast = forecast_metric(
+        [40, 40, 40],
+    )
+
+    assert forecast["count"] == 3
+    assert forecast["current"] == 40.0
+    assert forecast["velocity"] == 0.0
+    assert forecast["forecast"] == 40.0
+    assert forecast["direction"] == "STABLE"
+    assert forecast["method"] == "LINEAR_VELOCITY"
+
+
+def test_forecast_metric_custom_horizon():
+    forecast = forecast_metric(
+        [50, 52, 55],
+        horizon=3,
+    )
+
+    assert forecast["current"] == 55.0
+    assert forecast["velocity"] == 2.5
+    assert forecast["forecast"] == 62.5
+    assert forecast["horizon"] == 3
+
+def test_forecast_metric_single_value():
+    forecast = forecast_metric(
+        [50],
+    )
+
+    assert forecast["count"] == 1
+    assert forecast["current"] == 50.0
+    assert forecast["velocity"] is None
+    assert forecast["forecast"] is None
+    assert forecast["horizon"] == 1
+    assert forecast["direction"] == "UNKNOWN"
+    assert forecast["method"] == "LINEAR_VELOCITY"
+
+
+def test_forecast_metric_empty():
+    forecast = forecast_metric([])
+
+    assert forecast["count"] == 0
+    assert forecast["current"] is None
+    assert forecast["velocity"] is None
+    assert forecast["forecast"] is None
+    assert forecast["horizon"] == 1
+    assert forecast["direction"] == "UNKNOWN"
+    assert forecast["method"] == "LINEAR_VELOCITY"
+
+
+def test_forecast_metric_rejects_zero_horizon():
+    with pytest.raises(
+        ValueError,
+        match="horizon must be greater than zero",
+    ):
+        forecast_metric(
+            [50, 52, 55],
+            horizon=0,
+        )
+
+
+def test_forecast_metric_rejects_negative_horizon():
+    with pytest.raises(
+        ValueError,
+        match="horizon must be greater than zero",
+    ):
+        forecast_metric(
+            [50, 52, 55],
+            horizon=-1,
+        )
+
+
+def test_forecast_metric_converts_numeric_values_to_float():
+    forecast = forecast_metric(
+        [50, 52.5, 55],
+    )
+
+    assert forecast["current"] == 55.0
+    assert forecast["velocity"] == 2.5
+    assert forecast["forecast"] == 57.5
+
+def test_forecast_metric_rejects_float_horizon():
+    with pytest.raises(
+        TypeError,
+        match="horizon must be an integer",
+    ):
+        forecast_metric(
+            [50, 52, 55],
+            horizon=1.5,
+        )
+
+
+def test_forecast_metric_rejects_string_horizon():
+    with pytest.raises(
+        TypeError,
+        match="horizon must be an integer",
+    ):
+        forecast_metric(
+            [50, 52, 55],
+            horizon="2",
+        )
+
+
+def test_forecast_metric_rejects_boolean_horizon():
+    with pytest.raises(
+        TypeError,
+        match="horizon must be an integer",
+    ):
+        forecast_metric(
+            [50, 52, 55],
+            horizon=True,
+        )
+
+
+def test_forecast_metric_rejects_nan_values():
+    with pytest.raises(
+        ValueError,
+        match="values must contain only finite numbers",
+    ):
+        forecast_metric(
+            [50, float("nan"), 55],
+        )
+
+
+def test_forecast_metric_rejects_positive_infinity():
+    with pytest.raises(
+        ValueError,
+        match="values must contain only finite numbers",
+    ):
+        forecast_metric(
+            [50, float("inf"), 55],
+        )
+
+
+def test_forecast_metric_rejects_negative_infinity():
+    with pytest.raises(
+        ValueError,
+        match="values must contain only finite numbers",
+    ):
+        forecast_metric(
+            [50, float("-inf"), 55],
+        )
+
+def test_analyze_metric_includes_forecast():
+    history_rows = [
+        {"opportunity_score": 55},
+        {"opportunity_score": 52},
+        {"opportunity_score": 50},
+    ]
+
+    analysis = analyze_metric(
+        history_rows,
+        metric="opportunity_score",
+    )
+
+    assert "forecast" in analysis
+
+    assert analysis["forecast"]["count"] == 3
+    assert analysis["forecast"]["current"] == 55.0
+    assert analysis["forecast"]["velocity"] == 2.5
+    assert analysis["forecast"]["forecast"] == 57.5
+    assert analysis["forecast"]["horizon"] == 1
+    assert analysis["forecast"]["direction"] == "IMPROVING"
+    assert analysis["forecast"]["method"] == "LINEAR_VELOCITY"
+
+def test_analyze_metric_forecast_with_single_value():
+    history_rows = [
+        {"opportunity_score": 50},
+    ]
+
+    analysis = analyze_metric(
+        history_rows,
+        metric="opportunity_score",
+    )
+
+    assert analysis["forecast"]["count"] == 1
+    assert analysis["forecast"]["current"] == 50.0
+    assert analysis["forecast"]["velocity"] is None
+    assert analysis["forecast"]["forecast"] is None
+    assert analysis["forecast"]["direction"] == "UNKNOWN"
+
+
+def test_analyze_metric_forecast_with_no_numeric_values():
+    history_rows = [
+        {"opportunity_score": None},
+        {"opportunity_score": "missing"},
+        {"opportunity_score": True},
+    ]
+
+    analysis = analyze_metric(
+        history_rows,
+        metric="opportunity_score",
+    )
+
+    assert analysis["forecast"]["count"] == 0
+    assert analysis["forecast"]["current"] is None
+    assert analysis["forecast"]["velocity"] is None
+    assert analysis["forecast"]["forecast"] is None
+    assert analysis["forecast"]["direction"] == "UNKNOWN"

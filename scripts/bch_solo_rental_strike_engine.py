@@ -2350,6 +2350,53 @@ def calculate_trend_persistence(
         "consecutive_moves": consecutive_moves,
     }
 
+def forecast_metric(
+    values: list[float],
+    horizon: int = 1,
+) -> dict:
+    if isinstance(horizon, bool) or not isinstance(horizon, int):
+        raise TypeError("horizon must be an integer")
+
+    if horizon <= 0:
+        raise ValueError("horizon must be greater than zero")
+
+    numeric_values = [float(value) for value in values]
+
+    if not all(math.isfinite(value) for value in numeric_values):
+        raise ValueError("values must contain only finite numbers")
+
+    velocity_result = calculate_trend_velocity(numeric_values)
+
+    if not numeric_values:
+        return {
+            "count": 0,
+            "current": None,
+            "velocity": None,
+            "forecast": None,
+            "horizon": horizon,
+            "direction": "UNKNOWN",
+            "method": "LINEAR_VELOCITY",
+        }
+
+    current = numeric_values[-1]
+    velocity = velocity_result["velocity"]
+
+    forecast = (
+        None
+        if velocity is None
+        else current + (float(velocity) * horizon)
+    )
+
+    return {
+        "count": len(numeric_values),
+        "current": current,
+        "velocity": velocity,
+        "forecast": forecast,
+        "horizon": horizon,
+        "direction": velocity_result["direction"],
+        "method": "LINEAR_VELOCITY",
+    }
+
 def calculate_trend_velocity(
     values: List[float],
 ) -> Dict[str, Any]:
@@ -2525,8 +2572,9 @@ def analyze_metric(
     Build a reusable analytics result for one historical metric.
 
     History rows are expected to be ordered newest-first, matching
-    get_history_rows(). Numeric metric values are converted into
-    chronological order before persistence is calculated.
+    get_history_rows(). Valid numeric metric values are converted into
+    chronological order before persistence, acceleration, and forecasting
+    are calculated.
     """
     trend = calculate_metric_trend(
         history_rows=history_rows,
@@ -2546,12 +2594,14 @@ def analyze_metric(
 
     persistence = calculate_trend_persistence(values)
     acceleration = calculate_trend_acceleration(values)
+    forecast = forecast_metric(values)
 
     analysis = {
         "metric": metric,
         "trend": trend,
         "persistence": persistence,
         "acceleration": acceleration,
+        "forecast": forecast,
     }
 
     analysis["confidence"] = calculate_trend_confidence(
@@ -2562,6 +2612,7 @@ def analyze_metric(
         history_rows,
         metric,
     )
+
     analysis["trend_strength"] = calculate_trend_strength(
         confidence=analysis["confidence"]["level"],
         volatility=analysis["volatility"]["level"],
