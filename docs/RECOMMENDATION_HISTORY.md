@@ -2,204 +2,104 @@
 
 ## Purpose
 
-The Recommendation History system records every execution of the BCH Rental Engine and provides a complete historical record of the engine's decision-making process.
+Recommendation History is the historical intelligence subsystem of the BCH Rental Engine.
 
-Rather than only recording the final recommendation, the system captures every stage of the engine's decision pipeline, allowing operators to understand:
+Every execution of the engine produces a complete Snapshot of the market, the engine's decision pipeline, and the supporting analytics. These Snapshots allow the engine to explain not only **what** recommendation was produced, but **why**, **how**, and **how the recommendation is evolving over time**.
 
-- What recommendation was produced
-- Why that recommendation was produced
-- How the underlying market conditions evolved
-- How the engine's confidence changed over time
-- Whether market conditions are improving or deteriorating
+Rather than simply storing historical recommendations, Recommendation History provides the foundation for:
 
-Recommendation History is intended to improve operational awareness, explainability, trend analysis, future model validation, and historical research.
+- Explainability
+- Trend Intelligence
+- Operational awareness
+- Dashboard analytics
+- Future forecasting
+- Strategy backtesting
+- Machine learning
+- Historical research
+
+The system enables operators to answer questions such as:
+
+- What recommendation was produced?
+- Why was it produced?
+- What changed since the previous execution?
+- Is the opportunity improving or deteriorating?
+- How confident is the engine becoming?
+- Is the trend accelerating or slowing?
+- What conditions are preventing a better recommendation?
 
 ---
 
 # Design Goals
 
-The Recommendation History system should:
+Recommendation History is designed to be:
 
-- Record every engine execution.
-- Preserve the complete engine decision pipeline.
-- Capture meaningful recommendation changes.
-- Preserve market and strike metrics.
-- Support historical filtering.
-- Support dashboard visualization.
-- Support explainability.
-- Support future machine learning and backtesting.
-- Minimize storage requirements.
-- Remain backward compatible as new fields are added.
-- Be resilient to engine restarts.
+- Complete
+- Explainable
+- Deterministic
+- Compact
+- Backward compatible
+- Extensible
+- Analytics friendly
+- Dashboard friendly
+- Machine learning friendly
 
----
-
-# Philosophy
-
-Recommendation History records the engine's decisions rather than every raw API response.
-
-The objective is to reconstruct exactly how the engine arrived at a recommendation at any point in time.
-
-Every historical record should answer:
-
-- What did the engine know?
-- What decision did the engine make?
-- Why did the engine make that decision?
-- How did that decision differ from previous runs?
+Every engine execution should be reproducible from the stored history.
 
 ---
 
-# Core Concepts
+# Core Philosophy
 
-Recommendation History is built around two complementary concepts.
+The BCH Rental Engine is a decision-support system.
 
-## Snapshot
+Recommendation History therefore records **decisions**, not raw API responses.
 
-A Snapshot records the complete state of the BCH Rental Engine after every execution.
+The objective is to preserve everything necessary to reconstruct exactly how the engine reached a recommendation without storing unnecessary transient data.
 
-Every engine run creates exactly one Snapshot regardless of whether the recommendation changes.
+Each historical record should answer:
 
-Snapshots support:
+- What market existed?
+- What did the engine observe?
+- What recommendation was produced?
+- Why?
+- How has the recommendation evolved?
 
-- Historical reporting
-- Trend analysis
-- Dashboard visualizations
-- Time-series analysis
-- Machine learning
-- Backtesting
+---
 
-Example
+# Architecture
 
 ```
-09:00
-
-WATCH
-
-09:15
-
-WATCH
-
-09:30
-
-WATCH
-
-09:45
-
-WATCH
-
-10:00
-
-RENT
+Engine Execution
+        │
+        ▼
+Snapshot Created
+        │
+        ▼
+SQLite History
+        │
+        ▼
+History Retrieval API
+        │
+        ▼
+Analytics Framework
+        │
+        ▼
+Dashboard
+        │
+        ▼
+Operator
 ```
 
----
-
-## Event
-
-An Event represents a meaningful change between two Snapshots.
-
-Events are derived dynamically by comparing adjacent history records rather than stored separately.
-
-Typical Events include:
-
-- Operator recommendation changed
-- Opportunity Action changed
-- Market Regime changed
-- Recommended Pool changed
-- Opportunity Score crossed a threshold
-- Strike economics materially improved
-- Fair Value Ratio crossed a threshold
-
-Events support:
-
-- Recommendation Change Log
-- Notifications
-- Explainability
-- Operational review
-
-Example
-
-```
-10:00 UTC
-
-WATCH → RENT
-
-Reason
-
-Opportunity Score increased
-
-Fair Value Ratio crossed threshold
-
-Rental premium improved
-```
+Recommendation History is now the data source for the engine's analytics framework.
 
 ---
 
-# Engine Decision Pipeline
+# Historical Snapshot
 
-Every engine execution produces four progressively higher-level decisions.
+Every engine execution creates exactly one immutable Snapshot.
 
-## 1. Opportunity Score
+Snapshots are never modified after insertion.
 
-A numerical score between 0 and 100 representing the attractiveness of the current rental opportunity.
-
-Example
-
-```
-69.0
-```
-
----
-
-## 2. Opportunity Action
-
-A qualitative interpretation of the Opportunity Score.
-
-Possible values:
-
-- STRIKE_NOW
-- STRONG_WATCH
-- WATCH
-- WEAK_WATCH
-- WAIT
-
-This represents the engine's internal confidence.
-
----
-
-## 3. Alert Tier
-
-An internal classification used by the alerting system.
-
-Examples include:
-
-- DEPLOY_NOW
-- STRONG_RENT
-- NEAR_STRIKE
-- WATCH_IMPROVING
-
-Alert Tiers determine notification behavior and recommendation severity.
-
----
-
-## 4. Operator Recommendation
-
-The simplified recommendation presented to the operator.
-
-Possible values:
-
-- RENT
-- NEAR STRIKE
-- WATCH
-- DO NOT RENT
-
-This is the highest-level decision exposed by the dashboard.
-
----
-
-# Historical Record
-
-Each Snapshot records the complete engine state.
+Each Snapshot records:
 
 ## Metadata
 
@@ -222,8 +122,8 @@ Each Snapshot records the complete engine state.
 ## Strike Recommendation
 
 - Budget
-- Hashrate
-- Duration
+- Rental Duration
+- Recommended Hashrate
 - Probability of Success
 - Expected Revenue
 - Expected Profit
@@ -240,7 +140,7 @@ Each Snapshot records the complete engine state.
 - Network Difficulty
 - Network Hashrate
 - Fair Value Ratio
-- Rental Premium / Discount
+- Rental Premium
 - Market Regime
 
 ---
@@ -254,222 +154,241 @@ Each Snapshot records the complete engine state.
 
 ## Engine Metrics
 
-- Confidence
-- Opportunity Score
-- Risk Score
 - Scenario Count
-
----
-
-# Success Criteria
-
-The Recommendation History system should allow an operator to:
-
-- Understand the complete engine decision process.
-- View historical recommendations.
-- Detect recommendation changes.
-- Understand why recommendations changed.
-- Compare recommendations across time.
-- Review recommendation stability.
-- Analyze long-term trends.
-- Export historical data.
-- Support future explainability.
-
----
-
-# Engine History Dashboard
-
-## Primary User Experience
-
-The Engine History dashboard should answer five questions immediately.
-
-1. What is the engine recommending now?
-2. Has that recommendation changed?
-3. Is the opportunity improving or deteriorating?
-4. How confident is the engine becoming?
-5. How frequently do actionable opportunities occur?
-
-The page should emphasize decision evolution rather than raw historical data.
-
----
-
-# Dashboard Layout
-
-```
-History Summary
-
-↓
-
-Operator Recommendation Timeline
-
-↓
-
-Opportunity Action Timeline
-
-↓
-
-Recommendation Change Log
-
-↓
-
-Decision Metric Trends
-
-↓
-
-Historical Run Details
-```
-
----
-
-# 1. History Summary
-
-Display:
-
-Current Recommendation
-
-Current Opportunity Action
-
-Current Opportunity Score
-
-Current Market Regime
-
-Time in Current Recommendation
-
-Last Recommendation Change
-
-Recommendation Changes
-
-RENT Signals
-
-WATCH Signals
-
-DO NOT RENT Signals
-
----
-
-# 2. Operator Recommendation Timeline
-
-Displays:
-
-- RENT
-- NEAR STRIKE
-- WATCH
-- DO NOT RENT
-
-This timeline reflects what the operator was advised to do.
-
----
-
-# 3. Opportunity Action Timeline
-
-Displays:
-
-- STRIKE_NOW
-- STRONG_WATCH
-- WATCH
-- WEAK_WATCH
-- WAIT
-
-This timeline reflects how the engine's internal confidence evolved even when the operator recommendation remained unchanged.
-
----
-
-# 4. Recommendation Change Log
-
-Records meaningful transitions between adjacent Snapshots.
-
-Each entry includes:
-
-- Timestamp
-- Previous Recommendation
-- New Recommendation
-- Previous Opportunity Action
-- New Opportunity Action
-- Previous Market Regime
-- New Market Regime
-- Opportunity Score Change
-- Fair Value Ratio Change
-- Expected ROI Change
-- Primary Decision Driver
-
----
-
-# 5. Decision Metric Trends
-
-Charts include:
-
-- Opportunity Score
 - Confidence
-- Fair Value Ratio
-- Rental Premium
-- Risk-Adjusted ROI
-- Probability of Success
-- BCH Price
-- BTC Price
-- Network Difficulty
+- Risk Score
 
-Recommendation transitions should be highlighted on each chart.
+Snapshots intentionally contain enough information to recreate the engine's recommendation at any point in time.
 
 ---
 
-# 6. Historical Run Details
+# Events
 
-The complete history table should include:
+Events are derived dynamically by comparing adjacent Snapshots.
 
-- Timestamp
-- Operator Recommendation
-- Opportunity Action
-- Alert Tier
-- Opportunity Score
-- Market Regime
-- Budget
-- Hashrate
-- Duration
-- Probability
-- Expected Profit
-- Expected ROI
-- Fair Value Ratio
-- Rental Premium
-- Recommended Pool
+Events are not stored separately.
 
-Supported functionality:
+Examples include:
 
-- Date filtering
-- Recommendation filtering
-- Market filtering
-- Sorting
-- CSV Export
+- Recommendation changed
+- Opportunity Action changed
+- Market Regime changed
+- Pool recommendation changed
+- Opportunity Score crossed a threshold
+- Fair Value Ratio crossed a threshold
+- Strike economics materially improved
+- Trend strength changed
+
+Events support:
+
+- Notifications
+- Dashboard timelines
+- Change logs
+- Explainability
+- Forecasting
 
 ---
 
-# Default Time Range
+# Analytics Framework
 
-Default:
+Recommendation History now powers the reusable analytics subsystem.
 
-30 Days
+```
+SQLite History
+        │
+        ▼
+History Retrieval
+        │
+        ▼
+Metric Trend
+        │
+        ▼
+Numeric Trend
+        │
+        ├──────────────┐
+        ▼              ▼
+Confidence     Persistence
+        │              │
+        └──────┬───────┘
+               ▼
+           Velocity
+               │
+               ▼
+          Volatility
+               │
+               ▼
+        Trend Strength
+               │
+               ▼
+        Interpretation
+               │
+               ▼
+        Dashboard / API
+```
 
-Available ranges:
+The analytics framework is generic and can analyze any numeric metric stored in Recommendation History.
 
-- 24 Hours
-- 3 Days
-- 7 Days
-- 30 Days
-- 90 Days
-- All History
+---
+
+# Current Analytics
+
+The engine currently computes:
+
+## Trend Direction
+
+- IMPROVING
+- DECLINING
+- STABLE
+
+---
+
+## Confidence
+
+- HIGH
+- MEDIUM
+- LOW
+
+Confidence considers:
+
+- Number of observations
+- Trend consistency
+- History depth
+
+---
+
+## Persistence
+
+Measures the number of consecutive movements in the same direction.
+
+Examples:
+
+- 1 improvement
+- 4 consecutive improvements
+- 7 consecutive declines
+
+---
+
+## Velocity
+
+Measures the average rate of change between observations.
+
+Velocity provides early detection of rapidly improving or deteriorating conditions.
+
+---
+
+## Volatility
+
+Classifies market stability.
+
+Current levels:
+
+- LOW
+- HIGH
+
+---
+
+## Trend Strength
+
+Current classifications:
+
+- VERY_STRONG
+- STRONG
+- MODERATE
+- UNKNOWN
+
+Trend strength combines:
+
+- Confidence
+- Persistence
+- Volatility
+- Direction
+- High-velocity promotion
+
+---
+
+# Explainability
+
+Recommendation History provides the evidence used by the engine's explanation system.
+
+Current explanations include:
+
+- Recommendation reason
+- Previous recommendation
+- Score change
+- Market blockers
+- Conditions required to rent
+- Trend interpretation
+- Trend confidence
+- Trend persistence
+- Trend velocity
+- Trend volatility
+- Trend strength
+
+Every explanation presented to the operator should be traceable to Recommendation History.
+
+---
+
+# Dashboard Vision
+
+The Recommendation History dashboard should immediately answer:
+
+1. What is the engine recommending?
+2. Has that recommendation changed?
+3. Is the opportunity improving?
+4. How confident is the engine?
+5. How strong is the trend?
+6. How frequently do actionable opportunities occur?
+
+The dashboard should emphasize decision evolution rather than raw historical data.
 
 ---
 
 # Future Enhancements
 
-Future capabilities may include:
+Recommendation History is intended to support the next generation of analytics.
+
+Planned capabilities include:
+
+## Forecast Intelligence
+
+- Trend acceleration
+- Trend deceleration
+- Trend reversal detection
+- Plateau detection
+- False trend detection
+- Forecast confidence
+- Early strike opportunity detection
+
+---
+
+## Historical Analytics
 
 - Recommendation Stability Index
-- Confidence Trend Analysis
+- Recommendation frequency
 - Decision Driver Analytics
-- Historical Replay Mode
-- Strategy Backtesting
-- Machine Learning Feature Generation
-- Recommendation Forecasting
-- Notification History
-- Multi-Coin Recommendation Comparison
-- Engine Performance Benchmarking
+- Market health scoring
+- Historical replay
+- Strategy backtesting
+- Forecast validation
+
+---
+
+## Dashboard Enhancements
+
+- Historical playback
+- Interactive timelines
+- Recommendation heat maps
+- Trend explorer
+- Multi-metric overlays
+- Decision drill-down
+- Exportable analytics
+
+---
+
+# Long-Term Vision
+
+Recommendation History has evolved from a simple audit log into the historical intelligence layer of the BCH Rental Engine.
+
+Every future analytics feature—including forecasting, strategy simulation, machine learning, and explainable AI—will build upon this subsystem.
+
+The long-term objective is to provide operators with complete transparency into not only **what** the engine recommends, but **how**, **why**, and **where those recommendations are likely headed next**.

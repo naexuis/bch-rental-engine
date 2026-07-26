@@ -159,58 +159,73 @@ Features
 
 Status: Complete
 
-Features
+The Trend Intelligence subsystem has evolved into a reusable analytics framework that provides explainable trend analysis for any numeric metric.
+
+### Features
 
 - Generic numeric trend engine
 - Generic metric trend engine
 - Opportunity Score trend analysis
 - Trend presentation helper
-- Trend unit test suite
+- Trend interpretation integration
+- Trend confidence analysis
+- Trend persistence analysis
+- Trend velocity analysis
+- Trend volatility classification
+- Trend strength classification
+- Comprehensive trend unit test suite
 - Analytics layer architecture
 
-Current output includes
+### Current Trend Output
 
-- Direction
-- Previous score
-- Current score
+Every analyzed metric now produces:
+
+- Current value
+- Previous value
 - Latest change
+- Direction
+- Confidence
+- Persistence
+- Velocity
+- Volatility
+- Trend strength
 - History depth
+
+### Trend Strength Levels
+
+- VERY_STRONG
+- STRONG
+- MODERATE
+- UNKNOWN
+
+Trend strength now incorporates:
+
+- Confidence
+- Persistence
+- Volatility
+- Direction
+- High-velocity promotion logic
 
 ---
 
-## Phase 6 — Trend Confidence 🚧
+## Phase 6 — Forecast Intelligence 🚧
 
-Status: Next
+Status: Active Development
 
 Goal
 
-Improve trust in trend analysis.
+Move beyond describing current market conditions toward estimating where market conditions are heading.
 
 Planned
 
-- Trend confidence score
-- Consecutive improvement detection
-- Consecutive decline detection
-- Minimum history requirements
-- Trend quality scoring
+- Trend acceleration
+- Trend deceleration
+- Trend reversal detection
 - Plateau detection
 - False trend detection
-
-Example
-
-```
-Trend
-
-Direction:
-IMPROVING
-
-Confidence:
-HIGH
-
-Reason:
-18 observations
-5 consecutive improvements
-```
+- Rolling trend windows
+- Forecast confidence
+- Early strike opportunity detection
 
 ---
 
@@ -374,7 +389,7 @@ Long-term capabilities
 
 # Analytics Layer
 
-The analytics layer is now a reusable subsystem.
+The analytics subsystem is now a reusable framework capable of analyzing any numeric metric.
 
 ```
 SQLite
@@ -388,11 +403,28 @@ Metric Trend
      ▼
 Numeric Trend
      │
-     ▼
-Presentation
+     ├──────────────┐
+     ▼              ▼
+Confidence     Persistence
+     │              │
+     └──────┬───────┘
+            ▼
+        Velocity
+            │
+            ▼
+       Volatility
+            │
+            ▼
+     Trend Strength
+            │
+            ▼
+      Interpretation
+            │
+            ▼
+       Dashboard / API
 ```
 
-Future analytics will reuse this architecture.
+The analytics framework is intentionally generic so additional metrics (ROI, FVR, difficulty, BCH price, rental price, etc.) can reuse the same pipeline without additional architectural work.
 
 ---
 
@@ -450,7 +482,8 @@ This workflow has become one of the core engineering principles of the project.
 | v2.0.1 | Dashboard Polish |
 | v2.1.0 | Operations Toolkit |
 | v2.2.0 | Opportunity Intelligence & Explainability |
-| v2.3.0 | Trend Intelligence |
+| v2.3.0 | Trend Intelligence Framework |
+| v2.4.0 *(Next)* | Forecast Intelligence |
 
 ---
 

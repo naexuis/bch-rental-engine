@@ -2,61 +2,168 @@
 
 The Operations Runbook describes the day-to-day administration of the BCH Rental Engine.
 
-This document is intended for anyone responsible for operating, monitoring, maintaining, or updating the system.
+It is intended for operators responsible for deploying, monitoring, maintaining, and troubleshooting the production environment while keeping development isolated.
 
 ---
 
-## Standard Umbrel Update Workflow
+# Operational Philosophy
 
-Use the following command for normal dashboard updates:
+The BCH Rental Engine uses two completely separate environments.
+
+## Development
+
+Purpose
+
+- Feature development
+- Test-Driven Development (TDD)
+- Unit testing
+- Documentation updates
+- Experimental work
+
+Location
+
+```text
+~/projects/bch-rental-engine
+```
+
+Characteristics
+
+- Frequent commits
+- May contain unfinished work
+- Safe to modify
+- Never serves production traffic
+
+---
+
+## Production
+
+Purpose
+
+- Stable engine execution
+- Dashboard hosting
+- Historical data collection
+- Operator access
+
+Location
+
+```text
+~/bch_rental_engine
+```
+
+Characteristics
+
+- Dockerized dashboard
+- Stable releases only
+- Working tree always clean
+- Updated only through the deployment workflow
+
+Development should never be performed directly in the production repository.
+
+---
+
+# Standard Release Workflow
+
+Every production release follows the same sequence.
+
+```
+Development
+
+↓
+
+TDD Complete
+
+↓
+
+Regression Tests
+
+↓
+
+Documentation Updated
+
+↓
+
+Git Commit
+
+↓
+
+Git Push
+
+↓
+
+Release Tag
+
+↓
+
+Umbrel Update
+
+↓
+
+Health Check
+
+↓
+
+Production Verification
+```
+
+Only tagged, tested releases should be deployed to production.
+
+---
+
+# Standard Umbrel Update Workflow
+
+The preferred deployment method is:
 
 ```bash
 cd ~/bch_rental_engine
+
 ./scripts/update_dashboard.sh
 ```
 
-The update script will:
+The update script automatically:
 
-1. Verify that the Git working tree is clean.
-2. Fetch the latest branch and release tags.
-3. Pull updates using fast-forward-only mode.
-4. Build the dashboard Docker image.
-5. Replace the existing dashboard container.
-6. Wait for the dashboard to become available.
-7. Run the dashboard health check.
+1. Verifies the working tree is clean.
+2. Fetches the latest Git commits and tags.
+3. Performs a fast-forward pull.
+4. Builds the Docker dashboard image.
+5. Replaces the running container.
+6. Waits for the dashboard to become available.
+7. Executes the dashboard health check.
 
-Manual Docker commands should not be required during normal updates.
-
----
-
-# Daily Health Check
-
-A normal daily health check should take less than two minutes.
-
-Verify:
-
-- Dashboard is accessible
-- Engine completed its most recent execution
-- SQLite database is updating
-- JSON state file has a recent timestamp
-- No abnormal errors in JSONL logs
-- Telegram alerts are functioning (optional)
+Manual Docker commands should rarely be necessary.
 
 ---
 
-# Directory Layout
+# Repository Layout
 
+## Development
+
+```text
+~/projects/bch-rental-engine
 ```
-~/bch_rental_engine/
 
+---
+
+## Production
+
+```text
+~/bch_rental_engine
+```
+
+Important directories
+
+```text
 config/
+dashboard/
+docs/
 logs/
+scripts/
 state/
+tests/
 ```
 
-Important files:
+Critical files
 
-```
+```text
 config/.env
 
 state/bch_solo_rental_strike_engine.json
@@ -65,14 +172,31 @@ state/bch_rental_history.sqlite
 
 logs/bch_solo_rental_strike_engine.jsonl
 
-logs/bch_solo_rental_strike_engine_alerts.jsonl
+config/pools.json
 ```
 
 ---
 
-# Starting the Engine
+# Daily Health Check
 
-Load the environment:
+A normal health check should take less than two minutes.
+
+Verify
+
+- Dashboard accessible
+- Engine completed successfully
+- Latest JSON state updated
+- SQLite history growing
+- Recommendation History updating
+- No JSONL errors
+- Dashboard health check passes
+- Telegram alerts functioning (optional)
+
+---
+
+# Engine Execution
+
+Load environment variables
 
 ```bash
 set -a
@@ -80,27 +204,24 @@ source config/.env
 set +a
 ```
 
-Run:
+Run the engine
 
 ```bash
 python scripts/bch_solo_rental_strike_engine.py
 ```
 
-Expected output:
+Verify
 
-```
-Recommendation: WATCH
-
-Market Regime: FAIR
-
-Opportunity Score: 54.0
-```
+- Recommendation generated
+- SQLite updated
+- JSON state written
+- JSONL log appended
 
 ---
 
-# Starting the Dashboard
+# Dashboard Operations
 
-Development:
+## Development
 
 ```bash
 streamlit run dashboard/app.py \
@@ -108,115 +229,105 @@ streamlit run dashboard/app.py \
     --server.address 0.0.0.0
 ```
 
-Production (Docker)
-
-```
-docker ps
-```
-
-Expected
-
-```
-bch-rental-dashboard
-
-STATUS
-
-Up
-```
-
 ---
 
-# Updating the Repository
+## Production
 
-Navigate to the repository:
-
-```bash
-cd ~/projects/bch-rental-engine
-```
-
-Switch to the main branch:
-
-```bash
-git checkout main
-```
-
-Pull updates:
-
-```bash
-git pull origin main
-```
-
----
-
-# Updating Umbrel Dashboard
-
-Pull the latest code:
-
-```bash
-git checkout main
-
-git pull origin main
-```
-
-Stop the existing container:
-
-```bash
-sudo docker stop bch-rental-dashboard
-
-sudo docker rm bch-rental-dashboard
-```
-
-Build:
-
-```bash
-sudo docker build \
-    -f Dockerfile.dashboard \
-    -t bch-rental-dashboard .
-```
-
-Run:
-
-```bash
-sudo docker run -d \
-    --name bch-rental-dashboard \
-    --restart unless-stopped \
-    -p 8501:8501 \
-    -v ~/bch_rental_engine/state:/root/bch_rental_engine/state \
-    -v ~/bch_rental_engine/config:/root/bch_rental_engine/config \
-    bch-rental-dashboard
-```
-
-Verify:
+Verify container
 
 ```bash
 docker ps
 ```
+
+Health check
+
+```bash
+./scripts/check_dashboard.sh
+```
+
+Restart
+
+```bash
+./scripts/restart_dashboard.sh
+```
+
+Build
+
+```bash
+./scripts/build_dashboard.sh
+```
+
+Deploy
+
+```bash
+./scripts/deploy_dashboard.sh
+```
+
+Update
+
+```bash
+./scripts/update_dashboard.sh
+```
+
+---
+
+# Recommendation History Verification
+
+Recommendation History powers the analytics framework.
+
+Verify
+
+- SQLite updates every engine execution
+- Recommendation History page loads
+- Opportunity Score history visible
+- Historical records complete
+
+Trend analytics should be generated from Recommendation History.
+
+---
+
+# Trend Analytics Verification
+
+Current analytics include
+
+- Direction
+- Confidence
+- Persistence
+- Velocity
+- Volatility
+- Trend Strength
+
+Verify
+
+- Trends update correctly
+- Confidence appears reasonable
+- Velocity values are populated
+- Volatility classification behaves correctly
+- Trend strength matches expectations
 
 ---
 
 # Viewing Logs
 
-Engine log
+Engine
 
 ```bash
-tail -50 \
-~/bch_rental_engine/logs/bch_solo_rental_strike_engine.jsonl
+tail -50 logs/bch_solo_rental_strike_engine.jsonl
 ```
 
-Alert log
+Follow
 
 ```bash
-tail -50 \
-~/bch_rental_engine/logs/bch_solo_rental_strike_engine_alerts.jsonl
+tail -f logs/bch_solo_rental_strike_engine.jsonl
 ```
 
-Docker logs
+Docker
 
 ```bash
 docker logs bch-rental-dashboard
 ```
 
-Follow live logs
+Live Docker logs
 
 ```bash
 docker logs -f bch-rental-dashboard
@@ -226,29 +337,29 @@ docker logs -f bch-rental-dashboard
 
 # Viewing Current Recommendation
 
-Inspect the JSON state:
-
-```bash
-cat \
-~/bch_rental_engine/state/bch_solo_rental_strike_engine.json
-```
-
-Pretty-print:
+Pretty-print
 
 ```bash
 python -m json.tool \
-~/bch_rental_engine/state/bch_solo_rental_strike_engine.json
+state/bch_solo_rental_strike_engine.json
 ```
+
+Verify
+
+- Recommendation
+- Opportunity Score
+- Market Regime
+- Trend analytics
+- Interpretation
 
 ---
 
-# Checking Database Health
+# SQLite Verification
 
-Open SQLite
+Open database
 
 ```bash
-sqlite3 \
-~/bch_rental_engine/state/bch_rental_history.sqlite
+sqlite3 state/bch_rental_history.sqlite
 ```
 
 List tables
@@ -257,7 +368,7 @@ List tables
 .tables
 ```
 
-Recent runs
+Recent history
 
 ```sql
 SELECT *
@@ -268,90 +379,27 @@ LIMIT 10;
 
 Exit
 
-```
+```text
 .quit
 ```
 
 ---
 
-# Checking Disk Usage
-
-Logs
-
-```bash
-du -sh \
-~/bch_rental_engine/logs
-```
-
-State
-
-```bash
-du -sh \
-~/bch_rental_engine/state
-```
-
-Entire project
-
-```bash
-du -sh \
-~/projects/bch-rental-engine
-```
-
----
-
-# Backups
-
-The following should be backed up regularly.
-
-```
-config/
-
-state/
-
-logs/
-```
-
-The SQLite database is the most valuable file.
-
-```
-state/bch_rental_history.sqlite
-```
-
----
-
-# Restoring From Backup
-
-Restore
-
-```
-config/
-
-state/
-
-logs/
-```
-
-Restart the dashboard.
-
-No database rebuild is required.
-
----
-
 # Log Rotation
 
-Operational logs rotate automatically.
+The engine automatically rotates JSONL logs.
 
 Configuration
 
-```
+```text
 BCH_MAX_JSONL_LOG_BYTES
 
 BCH_MAX_JSONL_LOG_BACKUPS
 ```
 
-Example
+Typical files
 
-```
+```text
 engine.jsonl
 
 engine.jsonl.1
@@ -361,286 +409,195 @@ engine.jsonl.2
 engine.jsonl.3
 ```
 
-No manual cleanup should normally be required.
+No manual cleanup is normally required.
 
 ---
 
-# Updating Python Packages
+# Backup Strategy
 
-Activate the virtual environment
+Back up regularly
 
-```bash
-source venv/bin/activate
+```text
+config/
+
+state/
+
+logs/
 ```
 
-Upgrade
+Highest priority
 
-```bash
-pip install --upgrade pip
-
-pip install -r requirements.txt
+```text
+state/bch_rental_history.sqlite
 ```
+
+Recommendation History is the engine's most valuable operational asset.
 
 ---
 
-# Updating Docker Image
+# Restore Procedure
 
-Rebuild
+Restore
 
-```bash
-docker build \
--f Dockerfile.dashboard \
--t bch-rental-dashboard .
+```text
+config/
+
+state/
+
+logs/
 ```
 
 Restart
 
 ```bash
-docker restart bch-rental-dashboard
+./scripts/restart_dashboard.sh
 ```
+
+No database rebuild is required.
 
 ---
 
-# Common Maintenance Tasks
+# Routine Maintenance
 
-## Verify dashboard
+## Daily
 
-```
-http://SERVER_IP:8501
-```
-
-Check
-
-- Decision Center
-- Market Overview
-- Strike Analysis
-- Historical charts
-- Candlestick charts
-
----
-
-## Verify engine
-
-Run
-
-```bash
-python scripts/bch_solo_rental_strike_engine.py
-```
-
-Ensure
-
-- Recommendation generated
+- Dashboard online
+- Engine executed
 - SQLite updated
-- JSON updated
+- Recommendation History updated
+- Logs healthy
 
 ---
 
-## Verify Telegram
+## Weekly
 
-Temporarily enable
+- Review dashboard
+- Review Recommendation History
+- Verify backups
+- Review log growth
+- Pull Git updates
+- Test Telegram
 
-```
-BCH_FORCE_TEST_ALERT=true
-```
+---
 
-Run engine.
+## Monthly
 
-Confirm message received.
-
-Return
-
-```
-BCH_FORCE_TEST_ALERT=false
-```
+- Upgrade dependencies
+- Rebuild Docker image
+- Archive SQLite database
+- Review configuration
+- Test disaster recovery
+- Verify release documentation
 
 ---
 
 # Troubleshooting
 
-## Dashboard won't load
-
-Check
+## Dashboard unavailable
 
 ```bash
 docker ps
-```
 
-Then
-
-```bash
 docker logs bch-rental-dashboard
 ```
 
 ---
 
-## Engine fails
-
-Run
+## Engine failure
 
 ```bash
 python scripts/bch_solo_rental_strike_engine.py
 ```
 
-Inspect
+Review
 
-```
-logs/
-
-JSONL
-```
+- JSONL logs
+- Stack trace
+- Configuration
 
 ---
 
-## SQLite not updating
+## Recommendation History not updating
 
 Verify
 
-```
-state/
-```
-
-permissions.
-
-Confirm engine completed successfully.
+- SQLite permissions
+- Engine completed
+- Database writable
 
 ---
 
-## Recommendation missing
-
-Inspect
-
-```
-bch_solo_rental_strike_engine.json
-```
+## Trend analytics missing
 
 Verify
 
-```
-winners
-
-best_strike
-```
-
-exists.
+- Recommendation History exists
+- Sufficient historical observations
+- Analytics layer completed successfully
 
 ---
 
-## No market data
+## Telegram alerts missing
 
-Check internet connectivity.
+Temporarily enable
 
-Verify CoinGecko is reachable.
-
-Verify Braiins configuration.
-
----
-
-## No Telegram alerts
-
-Verify
-
-```
-TELEGRAM_BOT_TOKEN
-
-TELEGRAM_CHAT_ID
-```
-
-Run with
-
-```
+```text
 BCH_FORCE_TEST_ALERT=true
 ```
 
----
+Run engine.
 
-# Weekly Maintenance
+Confirm notification.
 
-Recommended once per week.
-
-- Review dashboard
-- Check database growth
-- Review log sizes
-- Update repository
-- Verify backups
-- Test Telegram
-- Review Opportunity Score history
-- Review recommendation history
+Disable afterward.
 
 ---
 
-# Monthly Maintenance
+# Future Operations Roadmap
 
-Recommended once per month.
+Operational capabilities planned for future releases include:
 
-- Upgrade Python packages
-- Update Docker image
-- Pull latest Git changes
-- Verify backups
-- Archive historical database
-- Review disk usage
-- Review configuration values
-- Test complete engine restart
+## Monitoring
+
+- Automated health monitoring
+- Docker health metrics
+- Engine heartbeat
+- Resource utilization tracking
 
 ---
 
-# Disaster Recovery Checklist
+## Alerting
 
-If moving to a new server:
-
-Restore
-
-- Repository
-- config/
-- state/
-- logs/
-
-Install dependencies.
-
-Load environment variables.
-
-Start engine.
-
-Start dashboard.
-
-Verify dashboard.
-
-Verify SQLite history.
-
-Verify Telegram.
-
-System should resume without data loss.
+- Slack notifications
+- Discord notifications
+- Email reports
+- SMS alerts
 
 ---
 
-# Operational Checklist
+## Forecast Operations
 
-Daily
-
-- ✅ Dashboard online
-- ✅ Engine completed successfully
-- ✅ JSON updated
-- ✅ SQLite updated
-- ✅ Logs healthy
-
-Weekly
-
-- ✅ Pull latest Git updates
-- ✅ Review log growth
-- ✅ Verify backups
-
-Monthly
-
-- ✅ Upgrade dependencies
-- ✅ Test restore procedure
-- ✅ Review configuration
-- ✅ Verify Docker deployment
+- Forecast dashboard
+- Trend reversal alerts
+- Strike countdowns
+- Opportunity forecasting
 
 ---
 
-# Next Steps
+## Deployment
 
-Continue with:
+- EC2 deployment
+- Blue/Green deployment
+- Automated releases
+- CI/CD integration
 
-- [Deploy to EC2](DEPLOY_EC2.md)
-- [Decision Log](DECISION_LOG.md)
-- [Developer Journal](DEVELOPER_JOURNAL.md)
+---
+
+# Related Documentation
+
+- CHANGELOG.md
+- ROADMAP.md
+- RECOMMENDATION_HISTORY.md
+- RELEASE_CHECKLIST.md
+- DEPLOYMENT_V2.md
+- ARCHITECTURE.md
