@@ -2371,6 +2371,7 @@ def calculate_trend_strength(
     volatility: str,
     persistence: int,
     direction: str,
+    velocity: float | None = None,
 ) -> Dict[str, Any]:
     if (
         confidence == "HIGH"
@@ -2386,6 +2387,13 @@ def calculate_trend_strength(
         and direction in {"IMPROVING", "DECLINING"}
     ):
         strength = "STRONG"
+    elif (
+        confidence == "MEDIUM"
+        and volatility == "LOW"
+        and persistence >= 3
+        and direction in {"IMPROVING", "DECLINING"}
+    ):
+        strength = "MODERATE"
     else:
         strength = "UNKNOWN"
 
@@ -2441,6 +2449,7 @@ def analyze_metric(
         volatility=analysis["volatility"]["level"],
         persistence=analysis["persistence"]["consecutive_moves"],
         direction=analysis["trend"]["direction"],
+        velocity=analysis["trend"].get("velocity"),
     )
 
     return analysis

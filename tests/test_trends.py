@@ -194,6 +194,7 @@ def test_analyze_metric_improving():
     assert "volatility" in analysis
     assert analysis["volatility"]["level"] == "HIGH"
     assert "trend_strength" in analysis
+    assert analysis["trend"]["velocity"] == 10
 
 def test_analyze_metric_empty():
     analysis = analyze_metric([], "score")
@@ -538,6 +539,7 @@ def test_calculate_trend_strength_strong():
         volatility="LOW",
         persistence=8,
         direction="IMPROVING",
+        velocity=10.0,
     )
 
     assert strength["strength"] == "VERY_STRONG"
@@ -561,3 +563,13 @@ def test_calculate_trend_strength_high_confidence_strong():
     )
 
     assert strength["strength"] == "STRONG"
+
+def test_calculate_trend_strength_medium_confidence_moderate():
+    strength = calculate_trend_strength(
+        confidence="MEDIUM",
+        volatility="LOW",
+        persistence=3,
+        direction="IMPROVING",
+    )
+
+    assert strength["strength"] == "MODERATE"
