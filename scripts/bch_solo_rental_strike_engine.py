@@ -1708,6 +1708,10 @@ def build_interpretation_text(
         confidence,
     )
 
+    trend_strength = build_trend_strength_section(
+        analysis.get("trend_strength", {}),
+    )
+
     volatility = build_volatility_section(
         analysis.get("volatility", {}),
     )
@@ -1724,6 +1728,8 @@ Summary:
 {opportunity_trend}
 
 {trend_confidence}
+
+{trend_strength}
 
 {volatility}
 

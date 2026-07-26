@@ -452,6 +452,35 @@ def test_build_interpretation_text_includes_volatility():
         recommendation="RENT",
         strike_type="TEST",
     )
+    text = build_interpretation_text(
+        best=best,
+        market_regime="TEST",
+        opportunity={
+            "action": "RENT",
+            "score": 90,
+        },
+        analysis={
+            "trend": {},
+            "confidence": {},
+            "trend_strength": {
+                "strength": "VERY_STRONG",
+            },
+            "volatility": {
+                "count": 5,
+                "range": 1.0,
+                "std_dev": 0.49,
+                "mean": 70.4,
+                "coefficient_of_variation": 0.006958777678361301,
+                "level": "LOW",
+            },
+        },
+        frontier_summary={},
+    )
+
+    assert "Volatility" in text
+    assert "LOW" in text
+    assert "Trend Strength" in text
+    assert "VERY_STRONG" in text
 
 def test_calculate_trend_velocity_improving():
     velocity = calculate_trend_velocity(
