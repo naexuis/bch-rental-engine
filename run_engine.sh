@@ -1,6 +1,6 @@
 #!/bin/sh
 
-CONFIG_DIR="${BCH_CONFIG_DIR:-/root/bch_rental_engine/config}"
+CONFIG_DIR="${BCH_CONFIG_DIR:-/config}"
 ENV_FILE="${CONFIG_DIR}/.env"
 ENV_EXAMPLE_FILE="/app/.env.example"
 
