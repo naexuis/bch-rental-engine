@@ -10,7 +10,7 @@ import traceback
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 import hashlib
 import hmac
@@ -2350,25 +2350,278 @@ def calculate_trend_persistence(
         "consecutive_moves": consecutive_moves,
     }
 
+def calculate_forecast_residuals(
+    values: Sequence[float],
+) -> list[float]:
+    """
+    Calculate rolling one-step forecast residuals.
+
+    Each residual is calculated as:
+
+        actual_value - predicted_value
+
+    At least three observations are required because the first forecast
+    uses the first two values to predict the third.
+
+    Uncertainty calculations are disabled for the internal rolling
+    forecasts to prevent recursive calls between this function and
+    forecast_metric().
+    """
+    numeric_values: list[float] = []
+
+    for value in values:
+        if isinstance(value, bool) or not isinstance(
+            value,
+            (int, float),
+        ):
+            raise TypeError(
+                "values must contain only numeric values"
+            )
+
+        numeric_value = float(value)
+
+        if not math.isfinite(numeric_value):
+            raise ValueError(
+                "values must contain only finite numbers"
+            )
+
+        numeric_values.append(numeric_value)
+
+    if len(numeric_values) < 3:
+        return []
+
+    residuals: list[float] = []
+
+    for index in range(2, len(numeric_values)):
+        history = numeric_values[:index]
+        actual = numeric_values[index]
+
+        forecast_result = forecast_metric(
+            history,
+            horizon=1,
+            include_uncertainty=False,
+        )
+
+        predicted = forecast_result["forecast"]
+
+        if predicted is None:
+            continue
+
+        residuals.append(
+            actual - float(predicted)
+        )
+
+    return residuals
+
+def calculate_forecast_rmse(
+    residuals: list[float],
+) -> float | None:
+    """
+    Calculate root mean squared error for forecast residuals.
+
+    Returns None when no residuals are available.
+    """
+    if not residuals:
+        return None
+
+    numeric_residuals: list[float] = []
+
+    for residual in residuals:
+        if isinstance(residual, bool) or not isinstance(
+            residual,
+            (int, float),
+        ):
+            raise TypeError(
+                "residuals must contain only numeric values"
+            )
+
+        numeric_residual = float(residual)
+
+        if not math.isfinite(numeric_residual):
+            raise ValueError(
+                "residuals must contain only finite numbers"
+            )
+
+        numeric_residuals.append(numeric_residual)
+
+    mean_squared_error = sum(
+        residual ** 2
+        for residual in numeric_residuals
+    ) / len(numeric_residuals)
+
+    return math.sqrt(mean_squared_error)
+
+def calculate_prediction_interval(
+    forecast: float | None,
+    rmse: float | None,
+    confidence_level: float = 0.95,
+    z_score: float = 1.96,
+) -> Dict[str, Any]:
+    """
+    Calculate a symmetric prediction interval around a point forecast.
+
+    Returns unavailable bounds when either the forecast or RMSE is missing.
+    """
+    if isinstance(confidence_level, bool) or not isinstance(
+        confidence_level,
+        (int, float),
+    ):
+        raise TypeError(
+            "confidence_level must be numeric"
+        )
+
+    confidence_level = float(confidence_level)
+
+    if not math.isfinite(confidence_level):
+        raise ValueError(
+            "confidence_level must be finite"
+        )
+
+    if not 0 < confidence_level < 1:
+        raise ValueError(
+            "confidence_level must be greater than zero and less than one"
+        )
+
+    if isinstance(z_score, bool) or not isinstance(
+        z_score,
+        (int, float),
+    ):
+        raise TypeError(
+            "z_score must be numeric"
+        )
+
+    z_score = float(z_score)
+
+    if not math.isfinite(z_score):
+        raise ValueError(
+            "z_score must be finite"
+        )
+
+    if z_score <= 0:
+        raise ValueError(
+            "z_score must be greater than zero"
+        )
+
+    if forecast is not None:
+        if isinstance(forecast, bool) or not isinstance(
+            forecast,
+            (int, float),
+        ):
+            raise TypeError(
+                "forecast must be numeric or None"
+            )
+
+        forecast = float(forecast)
+
+        if not math.isfinite(forecast):
+            raise ValueError(
+                "forecast must be finite"
+            )
+
+    if rmse is not None:
+        if isinstance(rmse, bool) or not isinstance(
+            rmse,
+            (int, float),
+        ):
+            raise TypeError(
+                "rmse must be numeric or None"
+            )
+
+        rmse = float(rmse)
+
+        if not math.isfinite(rmse):
+            raise ValueError(
+                "rmse must be finite"
+            )
+
+        if rmse < 0:
+            raise ValueError(
+                "rmse must be greater than or equal to zero"
+            )
+
+    if forecast is None or rmse is None:
+        return {
+            "forecast": forecast,
+            "rmse": rmse,
+            "confidence_level": confidence_level,
+            "z_score": z_score,
+            "lower_bound": None,
+            "upper_bound": None,
+        }
+
+    margin = z_score * rmse
+
+    return {
+        "forecast": forecast,
+        "rmse": rmse,
+        "confidence_level": confidence_level,
+        "z_score": z_score,
+        "lower_bound": forecast - margin,
+        "upper_bound": forecast + margin,
+    }
+
 def forecast_metric(
-    values: list[float],
+    values: Sequence[float],
     horizon: int = 1,
-) -> dict:
+    *,
+    include_uncertainty: bool = True,
+) -> Dict[str, Any]:
+    """
+    Forecast a metric using its average linear velocity.
+
+    When include_uncertainty is True, the result also includes:
+
+        residuals
+        rmse
+        confidence_level
+        z_score
+        lower_bound
+        upper_bound
+
+    Internal rolling forecasts disable uncertainty calculations to avoid
+    recursion when forecast residuals are calculated.
+    """
     if isinstance(horizon, bool) or not isinstance(horizon, int):
-        raise TypeError("horizon must be an integer")
+        raise TypeError(
+            "horizon must be an integer"
+        )
 
     if horizon <= 0:
-        raise ValueError("horizon must be greater than zero")
+        raise ValueError(
+            "horizon must be greater than zero"
+        )
 
-    numeric_values = [float(value) for value in values]
+    if not isinstance(include_uncertainty, bool):
+        raise TypeError(
+            "include_uncertainty must be a boolean"
+        )
 
-    if not all(math.isfinite(value) for value in numeric_values):
-        raise ValueError("values must contain only finite numbers")
+    numeric_values: list[float] = []
 
-    velocity_result = calculate_trend_velocity(numeric_values)
+    for value in values:
+        if isinstance(value, bool) or not isinstance(
+            value,
+            (int, float),
+        ):
+            raise TypeError(
+                "values must contain only numeric values"
+            )
+
+        numeric_value = float(value)
+
+        if not math.isfinite(numeric_value):
+            raise ValueError(
+                "values must contain only finite numbers"
+            )
+
+        numeric_values.append(numeric_value)
+
+    velocity_result = calculate_trend_velocity(
+        numeric_values
+    )
 
     if not numeric_values:
-        return {
+        result: Dict[str, Any] = {
             "count": 0,
             "current": None,
             "velocity": None,
@@ -2378,24 +2631,52 @@ def forecast_metric(
             "method": "LINEAR_VELOCITY",
         }
 
-    current = numeric_values[-1]
-    velocity = velocity_result["velocity"]
+    else:
+        current = numeric_values[-1]
+        velocity = velocity_result["velocity"]
 
-    forecast = (
-        None
-        if velocity is None
-        else current + (float(velocity) * horizon)
+        point_forecast = (
+            None
+            if velocity is None
+            else current + (float(velocity) * horizon)
+        )
+
+        result = {
+            "count": len(numeric_values),
+            "current": current,
+            "velocity": velocity,
+            "forecast": point_forecast,
+            "horizon": horizon,
+            "direction": velocity_result["direction"],
+            "method": "LINEAR_VELOCITY",
+        }
+
+    if not include_uncertainty:
+        return result
+
+    residuals = calculate_forecast_residuals(
+        numeric_values
     )
 
-    return {
-        "count": len(numeric_values),
-        "current": current,
-        "velocity": velocity,
-        "forecast": forecast,
-        "horizon": horizon,
-        "direction": velocity_result["direction"],
-        "method": "LINEAR_VELOCITY",
-    }
+    rmse = calculate_forecast_rmse(
+        residuals
+    )
+
+    interval = calculate_prediction_interval(
+        forecast=result["forecast"],
+        rmse=rmse,
+    )
+
+    result.update({
+        "residuals": residuals,
+        "rmse": rmse,
+        "confidence_level": interval["confidence_level"],
+        "z_score": interval["z_score"],
+        "lower_bound": interval["lower_bound"],
+        "upper_bound": interval["upper_bound"],
+    })
+
+    return result
 
 def calculate_trend_velocity(
     values: List[float],

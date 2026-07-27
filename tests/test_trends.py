@@ -6,9 +6,12 @@ from scripts.bch_solo_rental_strike_engine import (
     build_trend_confidence_section,
     build_trend_strength_section,
     build_volatility_section,
+    calculate_forecast_residuals,
+    calculate_forecast_rmse,
     calculate_metric_trend,
     calculate_metric_volatility,
     calculate_numeric_trend,
+    calculate_prediction_interval,
     calculate_trend_acceleration,
     calculate_trend_confidence,
     calculate_trend_persistence,
@@ -1107,3 +1110,391 @@ def test_analyze_metric_forecast_with_no_numeric_values():
     assert analysis["forecast"]["velocity"] is None
     assert analysis["forecast"]["forecast"] is None
     assert analysis["forecast"]["direction"] == "UNKNOWN"
+
+def test_calculate_forecast_residuals():
+    residuals = calculate_forecast_residuals(
+        [50, 52, 55, 57],
+    )
+
+    assert residuals == [1.0, -0.5]
+
+
+def test_calculate_forecast_residuals_perfect_linear_history():
+    residuals = calculate_forecast_residuals(
+        [10, 12, 14, 16],
+    )
+
+    assert residuals == [0.0, 0.0]
+
+
+def test_calculate_forecast_residuals_insufficient_history():
+    assert calculate_forecast_residuals([]) == []
+    assert calculate_forecast_residuals([50]) == []
+    assert calculate_forecast_residuals([50, 52]) == []
+
+def test_calculate_forecast_residuals_rejects_boolean_values():
+    with pytest.raises(
+        TypeError,
+        match="values must contain only numeric values",
+    ):
+        calculate_forecast_residuals(
+            [50, True, 55],
+        )
+
+
+def test_calculate_forecast_residuals_rejects_string_values():
+    with pytest.raises(
+        TypeError,
+        match="values must contain only numeric values",
+    ):
+        calculate_forecast_residuals(
+            [50, "52", 55],
+        )
+
+
+def test_calculate_forecast_residuals_rejects_nan_values():
+    with pytest.raises(
+        ValueError,
+        match="values must contain only finite numbers",
+    ):
+        calculate_forecast_residuals(
+            [50, float("nan"), 55],
+        )
+
+
+def test_calculate_forecast_residuals_rejects_positive_infinity():
+    with pytest.raises(
+        ValueError,
+        match="values must contain only finite numbers",
+    ):
+        calculate_forecast_residuals(
+            [50, float("inf"), 55],
+        )
+
+
+def test_calculate_forecast_residuals_rejects_negative_infinity():
+    with pytest.raises(
+        ValueError,
+        match="values must contain only finite numbers",
+    ):
+        calculate_forecast_residuals(
+            [50, float("-inf"), 55],
+        )
+
+def test_calculate_forecast_rmse():
+    rmse = calculate_forecast_rmse(
+        [1.0, -0.5],
+    )
+
+    assert rmse == pytest.approx(
+        0.7905694150420949,
+    )
+
+
+def test_calculate_forecast_rmse_perfect_forecast():
+    rmse = calculate_forecast_rmse(
+        [0.0, 0.0],
+    )
+
+    assert rmse == 0.0
+
+
+def test_calculate_forecast_rmse_empty():
+    assert calculate_forecast_rmse([]) is None
+
+def test_calculate_forecast_rmse_rejects_boolean_values():
+    with pytest.raises(
+        TypeError,
+        match="residuals must contain only numeric values",
+    ):
+        calculate_forecast_rmse(
+            [1.0, True],
+        )
+
+
+def test_calculate_forecast_rmse_rejects_string_values():
+    with pytest.raises(
+        TypeError,
+        match="residuals must contain only numeric values",
+    ):
+        calculate_forecast_rmse(
+            [1.0, "-0.5"],
+        )
+
+
+def test_calculate_forecast_rmse_rejects_nan_values():
+    with pytest.raises(
+        ValueError,
+        match="residuals must contain only finite numbers",
+    ):
+        calculate_forecast_rmse(
+            [1.0, float("nan")],
+        )
+
+
+def test_calculate_forecast_rmse_rejects_positive_infinity():
+    with pytest.raises(
+        ValueError,
+        match="residuals must contain only finite numbers",
+    ):
+        calculate_forecast_rmse(
+            [1.0, float("inf")],
+        )
+
+
+def test_calculate_forecast_rmse_rejects_negative_infinity():
+    with pytest.raises(
+        ValueError,
+        match="residuals must contain only finite numbers",
+    ):
+        calculate_forecast_rmse(
+            [1.0, float("-inf")],
+        )
+
+def test_calculate_prediction_interval():
+    interval = calculate_prediction_interval(
+        forecast=57.5,
+        rmse=0.7905694150420949,
+    )
+
+    assert interval["forecast"] == 57.5
+    assert interval["rmse"] == pytest.approx(
+        0.7905694150420949,
+    )
+    assert interval["confidence_level"] == 0.95
+    assert interval["z_score"] == 1.96
+    assert interval["lower_bound"] == pytest.approx(
+        55.9504839465175,
+    )
+    assert interval["upper_bound"] == pytest.approx(
+        59.0495160534825,
+    )
+
+
+def test_calculate_prediction_interval_zero_rmse():
+    interval = calculate_prediction_interval(
+        forecast=40.0,
+        rmse=0.0,
+    )
+
+    assert interval["lower_bound"] == 40.0
+    assert interval["upper_bound"] == 40.0
+
+
+def test_calculate_prediction_interval_missing_forecast():
+    interval = calculate_prediction_interval(
+        forecast=None,
+        rmse=1.0,
+    )
+
+    assert interval["forecast"] is None
+    assert interval["lower_bound"] is None
+    assert interval["upper_bound"] is None
+
+
+def test_calculate_prediction_interval_missing_rmse():
+    interval = calculate_prediction_interval(
+        forecast=57.5,
+        rmse=None,
+    )
+
+    assert interval["forecast"] == 57.5
+    assert interval["rmse"] is None
+    assert interval["lower_bound"] is None
+    assert interval["upper_bound"] is None
+
+def test_calculate_prediction_interval_rejects_negative_rmse():
+    with pytest.raises(
+        ValueError,
+        match="rmse must be greater than or equal to zero",
+    ):
+        calculate_prediction_interval(
+            forecast=57.5,
+            rmse=-1.0,
+        )
+
+
+def test_calculate_prediction_interval_rejects_boolean_forecast():
+    with pytest.raises(
+        TypeError,
+        match="forecast must be numeric or None",
+    ):
+        calculate_prediction_interval(
+            forecast=True,
+            rmse=1.0,
+        )
+
+
+def test_calculate_prediction_interval_rejects_string_forecast():
+    with pytest.raises(
+        TypeError,
+        match="forecast must be numeric or None",
+    ):
+        calculate_prediction_interval(
+            forecast="57.5",
+            rmse=1.0,
+        )
+
+
+def test_calculate_prediction_interval_rejects_boolean_rmse():
+    with pytest.raises(
+        TypeError,
+        match="rmse must be numeric or None",
+    ):
+        calculate_prediction_interval(
+            forecast=57.5,
+            rmse=True,
+        )
+
+
+def test_calculate_prediction_interval_rejects_string_rmse():
+    with pytest.raises(
+        TypeError,
+        match="rmse must be numeric or None",
+    ):
+        calculate_prediction_interval(
+            forecast=57.5,
+            rmse="1.0",
+        )
+
+
+def test_calculate_prediction_interval_rejects_non_finite_forecast():
+    with pytest.raises(
+        ValueError,
+        match="forecast must be finite",
+    ):
+        calculate_prediction_interval(
+            forecast=float("nan"),
+            rmse=1.0,
+        )
+
+
+def test_calculate_prediction_interval_rejects_non_finite_rmse():
+    with pytest.raises(
+        ValueError,
+        match="rmse must be finite",
+    ):
+        calculate_prediction_interval(
+            forecast=57.5,
+            rmse=float("inf"),
+        )
+
+def test_calculate_prediction_interval_rejects_boolean_confidence_level():
+    with pytest.raises(
+        TypeError,
+        match="confidence_level must be numeric",
+    ):
+        calculate_prediction_interval(
+            forecast=57.5,
+            rmse=1.0,
+            confidence_level=True,
+        )
+
+
+def test_calculate_prediction_interval_rejects_string_confidence_level():
+    with pytest.raises(
+        TypeError,
+        match="confidence_level must be numeric",
+    ):
+        calculate_prediction_interval(
+            forecast=57.5,
+            rmse=1.0,
+            confidence_level="0.95",
+        )
+
+
+def test_calculate_prediction_interval_rejects_invalid_confidence_level():
+    with pytest.raises(
+        ValueError,
+        match="confidence_level must be greater than zero and less than one",
+    ):
+        calculate_prediction_interval(
+            forecast=57.5,
+            rmse=1.0,
+            confidence_level=1.0,
+        )
+
+
+def test_calculate_prediction_interval_rejects_zero_confidence_level():
+    with pytest.raises(
+        ValueError,
+        match="confidence_level must be greater than zero and less than one",
+    ):
+        calculate_prediction_interval(
+            forecast=57.5,
+            rmse=1.0,
+            confidence_level=0.0,
+        )
+
+
+def test_calculate_prediction_interval_rejects_boolean_z_score():
+    with pytest.raises(
+        TypeError,
+        match="z_score must be numeric",
+    ):
+        calculate_prediction_interval(
+            forecast=57.5,
+            rmse=1.0,
+            z_score=True,
+        )
+
+
+def test_calculate_prediction_interval_rejects_string_z_score():
+    with pytest.raises(
+        TypeError,
+        match="z_score must be numeric",
+    ):
+        calculate_prediction_interval(
+            forecast=57.5,
+            rmse=1.0,
+            z_score="1.96",
+        )
+
+
+def test_calculate_prediction_interval_rejects_non_positive_z_score():
+    with pytest.raises(
+        ValueError,
+        match="z_score must be greater than zero",
+    ):
+        calculate_prediction_interval(
+            forecast=57.5,
+            rmse=1.0,
+            z_score=0.0,
+        )
+
+
+def test_calculate_prediction_interval_rejects_non_finite_z_score():
+    with pytest.raises(
+        ValueError,
+        match="z_score must be finite",
+    ):
+        calculate_prediction_interval(
+            forecast=57.5,
+            rmse=1.0,
+            z_score=float("inf"),
+        )
+
+def test_forecast_metric_includes_prediction_interval():
+    forecast = forecast_metric(
+        [50, 52, 55, 57],
+    )
+
+    assert forecast["forecast"] == pytest.approx(
+        59.333333333333336,
+    )
+
+    assert forecast["residuals"] == [1.0, -0.5]
+
+    assert forecast["rmse"] == pytest.approx(
+        0.7905694150420949,
+    )
+
+    assert forecast["confidence_level"] == 0.95
+
+    assert forecast["lower_bound"] == pytest.approx(
+        57.78381727985084,
+    )
+
+    assert forecast["upper_bound"] == pytest.approx(
+        60.88284938681583,
+    )
