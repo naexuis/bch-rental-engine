@@ -503,18 +503,32 @@ if st.sidebar.button("Refresh now"):
     st.rerun()
 
 has_history = not df.empty
-latest = df.iloc[-1] if has_history else pd.Series(dtype="object")
 
-best_strike = state.get("winners", {}).get("best_strike", {})
-recommended_pool = state.get("recommended_pool", {})
+best_strike = state.get("winners", {}).get("best_strike") or {}
+recommended_pool = state.get("recommended_pool") or {}
 interpretation = state.get("interpretation", "")
 engine_answer = state.get("answer", "")
 
-last_updated = (
-    latest.get("timestamp", "Never")
-    if has_history
-    else "Never"
-)
+if has_history:
+    latest = df.iloc[-1]
+else:
+    opportunity = state.get("opportunity") or {}
+
+    latest = pd.Series({
+        "timestamp": state.get("timestamp", "Never"),
+        "best_fair_value_ratio": best_strike.get("fair_value_ratio", 0),
+        "best_risk_adjusted_roi_pct": best_strike.get(
+            "risk_adjusted_roi_pct",
+            0,
+        ),
+        "best_prob_1plus": best_strike.get("prob_1plus", 0),
+        "opportunity_score": opportunity.get("score", 0),
+        "market_regime": state.get("market_regime", "N/A"),
+        "best_recommendation": state.get("recommendation", "N/A"),
+        "opportunity_action": opportunity.get("action", "WAIT"),
+    })
+
+last_updated = latest.get("timestamp", "Never")
 history_rows = len(df)
 
 status_col1, status_col2 = st.columns(2)
