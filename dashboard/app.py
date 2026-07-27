@@ -581,6 +581,7 @@ if page == "Dashboard":
         "WATCH": "WATCH",
         "MONITOR": "MONITOR",
         "NEAR STRIKE": "WATCH",
+        "WAIT": "WAITING",
         "DO NOT RENT": "DO NOT RENT",
     }.get(recommendation, "DO NOT RENT")
 
@@ -591,6 +592,7 @@ if page == "Dashboard":
         "WATCH": "Near Strike Opportunity",
         "MONITOR": "Continue Monitoring",
         "NEAR STRIKE": "Near Strike Opportunity",
+        "WAIT": "Waiting for Pricing Data",
         "DO NOT RENT": "Unfavorable Rental Conditions",
     }.get(recommendation, "Unfavorable Rental Conditions")
 
@@ -611,6 +613,11 @@ if page == "Dashboard":
             "Conditions are close to the strike threshold. "
             "Continue monitoring before renting."
         ),
+        "WAIT": (
+            "Live BCH market data was retrieved successfully, but no hashpower "
+            "pricing source is currently available. Strike recommendations will "
+            "resume automatically once pricing data becomes available."
+        ),
         "DO NOT RENT": (
             "Current market conditions do not support renting hashpower."
         ),
@@ -629,7 +636,7 @@ if page == "Dashboard":
 
     if operator_action in ["RENT", "RENT NOW"]:
         st.success(banner_text)
-    elif operator_action in ["WATCH", "MONITOR"]:
+    elif operator_action in ["WATCH", "MONITOR", "WAITING"]:
         st.warning(banner_text)
     else:
         st.error(banner_text)

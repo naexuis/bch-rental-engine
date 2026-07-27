@@ -2781,9 +2781,61 @@ def send_telegram_alert(message: str) -> bool:
 # ENGINE
 # =============================================================================
 
+def build_waiting_for_pricing_record(
+    market: MarketData,
+    error_message: str,
+) -> Dict[str, Any]:
+    answer = (
+        "WAITING FOR PRICING: market data loaded successfully, but no executable "
+        "hashpower pricing source is currently available."
+    )
+
+    return {
+        "timestamp": market.timestamp,
+        "status": "waiting_for_pricing",
+        "answer": answer,
+        "market": asdict(market),
+        "sources": [],
+        "scenario_count": 0,
+        "winners": {
+            "best_strike": None,
+        },
+        "pool_routing": {},
+        "recommended_pool": {},
+        "probability_table": [],
+        "recommendation": "WAIT",
+        "alert_tier": "NONE",
+        "should_alert": False,
+        "telegram_sent": False,
+        "data_sanity_issues": [error_message],
+        "market_regime": "WAITING",
+        "opportunity": {
+            "score": 0,
+            "action": "WAIT",
+        },
+        "interpretation": (
+            "The engine will retry automatically on the next scheduled run. "
+            "Configure BRAIINS_BTC_PER_EH_DAY or provide an enabled MRR pricing source."
+        ),
+    }
+
+
 def run_engine() -> Dict[str, Any]:
     market = fetch_market_data()
-    sources = load_all_sources()
+
+    try:
+        sources = load_all_sources()
+    except RuntimeError as exc:
+        if "No hashpower sources found" not in str(exc):
+            raise
+
+        record = build_waiting_for_pricing_record(
+            market=market,
+            error_message=str(exc),
+        )
+        write_jsonl_log(LOG_PATH, record)
+        write_latest_state(STATE_PATH, record)
+        return record
 
     scenarios = build_and_score_scenarios(market, sources)
 
