@@ -164,7 +164,12 @@ BRAIINS_AVAILABLE_PH = os.getenv("BRAIINS_AVAILABLE_PH")
 
 FORCE_TEST_ALERT = os.getenv("BCH_FORCE_TEST_ALERT", "false").lower() == "true"
 
-POOLS_CONFIG_PATH = Path(os.getenv("BCH_POOLS_CONFIG_PATH", "config/pools.json"))
+POOLS_CONFIG_PATH = Path(
+    os.getenv(
+        "BCH_POOLS_CONFIG_PATH",
+        str(CONFIG_DIR / "pools.json"),
+    )
+)
 
 
 # =============================================================================

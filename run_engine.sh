@@ -1,7 +1,9 @@
 #!/bin/sh
 
+CONFIG_DIR="${BCH_CONFIG_DIR:-/app/config}"
+
 set -a
-. /app/config/.env
+. "${CONFIG_DIR}/.env"
 set +a
 
 while true
