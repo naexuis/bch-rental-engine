@@ -502,18 +502,19 @@ if st.sidebar.button("Refresh now"):
     st.cache_data.clear()
     st.rerun()
 
-if df.empty:
-    st.warning("No history data found yet.")
-    st.stop()
-
-latest = df.iloc[-1]
+has_history = not df.empty
+latest = df.iloc[-1] if has_history else pd.Series(dtype="object")
 
 best_strike = state.get("winners", {}).get("best_strike", {})
 recommended_pool = state.get("recommended_pool", {})
 interpretation = state.get("interpretation", "")
 engine_answer = state.get("answer", "")
 
-last_updated = latest["timestamp"]
+last_updated = (
+    latest.get("timestamp", "Never")
+    if has_history
+    else "Never"
+)
 history_rows = len(df)
 
 status_col1, status_col2 = st.columns(2)
@@ -530,6 +531,24 @@ recommendation = latest.get("best_recommendation", "N/A")
 action = str(latest.get("opportunity_action", "WAIT")).upper()
 
 if page == "Dashboard":
+    if not has_history and not state:
+        st.subheader("Decision Center")
+        st.info(
+            "The dashboard is installed and ready. "
+            "Waiting for the first successful engine run."
+        )
+
+        c1, c2, c3 = st.columns(3)
+        c1.metric("History Rows", "0")
+        c2.metric("Latest Run", "Waiting")
+        c3.metric("Engine State", "Not available yet")
+
+        st.caption(
+            "Strike recommendations, opportunity metrics, and pool routing "
+            "will appear after the engine writes its first state and history records."
+        )
+
+        st.stop()
 
     winners = state.get("winners", {})
     best = winners.get("best_strike", {}) or {}
@@ -899,10 +918,23 @@ elif page == "Market":
     st.subheader("Market Overview")
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("BTC Price", f"${latest.get('btc_usd', 0):,.0f}")
-    col2.metric("BCH Price", f"${latest.get('bch_usd', 0):,.2f}")
-    col3.metric("Difficulty", fmt_large_number(latest.get("bch_difficulty", 0)))
-    col4.metric("Network EH/s", f"{latest.get('bch_network_hashrate_eh', 0):.4f}")
+
+    if has_history:
+        col1.metric("BTC Price", f"${latest.get('btc_usd', 0):,.0f}")
+        col2.metric("BCH Price", f"${latest.get('bch_usd', 0):,.2f}")
+        col3.metric(
+            "Difficulty",
+            fmt_large_number(latest.get("bch_difficulty", 0)),
+        )
+        col4.metric(
+            "Network EH/s",
+            f"{latest.get('bch_network_hashrate_eh', 0):.4f}",
+        )
+    else:
+        col1.metric("BTC Price", "Waiting")
+        col2.metric("BCH Price", "Waiting")
+        col3.metric("Difficulty", "Waiting")
+        col4.metric("Network EH/s", "Waiting")
 
     st.divider()
     st.subheader("BCH Price Candlesticks")
@@ -1155,21 +1187,26 @@ elif page == "Market":
         except Exception as e:
             st.warning(f"Unable to load right candles: {e}")
 
-    st.subheader("Fair Value Ratio Over Time")
-    fig = px.line(df, x="timestamp", y="best_fair_value_ratio")
-    st.plotly_chart(fig, use_container_width=True)
+    if has_history:
+        st.subheader("Fair Value Ratio Over Time")
+        fig = px.line(df, x="timestamp", y="best_fair_value_ratio")
+        st.plotly_chart(fig, use_container_width=True)
 
-    st.subheader("BCH Price Over Time")
-    fig = px.line(df, x="timestamp", y="bch_usd")
-    st.plotly_chart(fig, use_container_width=True)
+        st.subheader("BCH Price Over Time")
+        fig = px.line(df, x="timestamp", y="bch_usd")
+        st.plotly_chart(fig, use_container_width=True)
 
-    st.subheader("BTC Price Over Time")
-    fig = px.line(df, x="timestamp", y="btc_usd")
-    st.plotly_chart(fig, use_container_width=True)
+        st.subheader("BTC Price Over Time")
+        fig = px.line(df, x="timestamp", y="btc_usd")
+        st.plotly_chart(fig, use_container_width=True)
 
-    st.subheader("Difficulty Over Time")
-    fig = px.line(df, x="timestamp", y="bch_difficulty")
-    st.plotly_chart(fig, use_container_width=True)
+        st.subheader("Difficulty Over Time")
+        fig = px.line(df, x="timestamp", y="bch_difficulty")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info(
+            "Historical engine charts will appear after the first successful engine run."
+        )
 
 elif page == "Market Trends":
     st.subheader("Market Trends")

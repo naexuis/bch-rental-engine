@@ -2,7 +2,7 @@ manifestVersion: 1
 id: bch-rental-engine
 category: bitcoin
 name: BCH Rental Engine
-version: "0.1.0"
+version: "0.1.1"
 tagline: BCH solo rental opportunity monitor
 description: >-
   Monitors Bitcoin Cash network conditions, rental pricing, expected block
