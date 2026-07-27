@@ -1,0 +1,28 @@
+manifestVersion: 1
+id: bch-rental-engine
+category: bitcoin
+name: BCH Rental Engine
+version: "0.1.0"
+tagline: BCH solo rental opportunity monitor
+description: >-
+  Monitors Bitcoin Cash network conditions, rental pricing, expected block
+  probabilities, and strike quality to identify potential solo-mining rental
+  opportunities.
+
+  The app includes:
+    - Automated BCH rental opportunity analysis
+    - Probability and expected-value calculations
+    - Recommendation history and state tracking
+    - Streamlit dashboard
+developer: Marcus Hilliard
+website: ""
+repo: ""
+support: ""
+dependencies: []
+port: 8501
+icon: ""
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+submitter: Marcus Hilliard

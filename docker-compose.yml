@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: dashboard
+      APP_PORT: 8501
+
+  engine:
+    image: bch-rental-engine:umbrel-test
+    restart: unless-stopped
+    volumes:
+      - ${APP_DATA_DIR}/config:/root/bch_rental_engine/config
+      - ${APP_DATA_DIR}/state:/root/bch_rental_engine/state
+      - ${APP_DATA_DIR}/logs:/root/bch_rental_engine/logs
+
+  dashboard:
+    image: bch-rental-engine:umbrel-test
+    command:
+      - streamlit
+      - run
+      - dashboard/app.py
+      - --server.port=8501
+      - --server.address=0.0.0.0
+    restart: unless-stopped
+    depends_on:
+      - engine
+    volumes:
+      - ${APP_DATA_DIR}/config:/root/bch_rental_engine/config
+      - ${APP_DATA_DIR}/state:/root/bch_rental_engine/state
+
