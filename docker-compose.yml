@@ -3,8 +3,10 @@ version: "3.8"
 services:
   app_proxy:
     environment:
-      APP_HOST: dashboard
+      APP_HOST: bch-rental-dashboard
       APP_PORT: 8501
+    networks:
+      - umbrel_main_network
 
   engine:
     image: bch-rental-engine:umbrel-test
@@ -16,6 +18,13 @@ services:
 
   dashboard:
     image: bch-rental-engine:umbrel-test
+    networks:
+      default:
+        aliases:
+          - bch-rental-dashboard
+      umbrel_main_network:
+        aliases:
+          - bch-rental-dashboard
     command:
       - streamlit
       - run
@@ -29,3 +38,8 @@ services:
       - ${APP_DATA_DIR}/config:/root/bch_rental_engine/config
       - ${APP_DATA_DIR}/state:/root/bch_rental_engine/state
 
+
+networks:
+  umbrel_main_network:
+    external: true
+    name: umbrel_main_network
