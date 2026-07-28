@@ -540,10 +540,10 @@ def build_pool_rankings_for_strike(
     best: StrikeScenario,
     market: MarketData,
 ) -> Dict[str, Any]:
-    from pools.molepool import MolepoolAdapter
-    from pools.two_miners import TwoMinersAdapter
-    from pools.kryptex import KryptexAdapter
-    from pools.mining_dutch import MiningDutchAdapter
+    from scripts.pools.molepool import MolepoolAdapter
+    from scripts.pools.two_miners import TwoMinersAdapter
+    from scripts.pools.kryptex import KryptexAdapter
+    from scripts.pools.mining_dutch import MiningDutchAdapter
 
     pools = load_pool_config()
 
@@ -602,7 +602,7 @@ def test_pool_math():
     print("Network Share:", share)
 
 def test_pool_adapters() -> None:
-    from pools import get_pool_adapter
+    from scripts.pools import get_pool_adapter
 
     pools = load_pool_config()
 
@@ -613,7 +613,7 @@ def test_pool_adapters() -> None:
         print(pool.get("key"), type(adapter).__name__)
 
 def test_molepool_adapter() -> None:
-    from pools.molepool import MolepoolAdapter
+    from scripts.pools.molepool import MolepoolAdapter
 
     pools = load_pool_config()
     cfg = next(p for p in pools if p.get("key") == "molepool")
@@ -624,7 +624,7 @@ def test_molepool_adapter() -> None:
     print(snapshot)
 
 def test_molepool_routing_score() -> None:
-    from pools.molepool import MolepoolAdapter
+    from scripts.pools.molepool import MolepoolAdapter
 
     pools = load_pool_config()
     cfg = next(p for p in pools if p.get("key") == "molepool")
@@ -640,7 +640,7 @@ def test_molepool_routing_score() -> None:
     print(json.dumps(score, indent=2))
 
 def test_pool_ranking_engine() -> None:
-    from pools.molepool import MolepoolAdapter
+    from scripts.pools.molepool import MolepoolAdapter
 
     pools = load_pool_config()
     cfg = next(p for p in pools if p.get("key") == "molepool")
@@ -657,7 +657,7 @@ def test_pool_ranking_engine() -> None:
     print(json.dumps(rankings, indent=2))
 
 def test_two_miners_adapter() -> None:
-    from pools.two_miners import TwoMinersAdapter
+    from scripts.pools.two_miners import TwoMinersAdapter
 
     pools = load_pool_config()
     cfg = next(p for p in pools if p.get("key") == "2miners")
@@ -859,14 +859,74 @@ def classify_strike_type(duration_hours: float) -> str:
         return "LONG_SHOT_SESSION"
     return "REJECT"
 
+
 def fetch_braiins_source() -> Optional[HashSource]:
-    if not BRAIINS_PRICE_OVERRIDE:
+    """
+    Fetch the current Braiins spot-market ask price and available hashrate.
+
+    Primary source:
+        GET https://hashpower.braiins.com/v1/spot/stats
+
+    Fallback:
+        BRAIINS_BTC_PER_EH_DAY environment variable
+    """
+    stats_url = "https://hashpower.braiins.com/v1/spot/stats"
+
+    price_btc_per_eh_day: Optional[float] = None
+    available_ph: Optional[float] = None
+
+    try:
+        stats = request_json(stats_url)
+
+        status = str(stats.get("status") or "")
+        best_ask_sat = as_float(stats.get("best_ask_sat"))
+        api_available_ph = as_float(stats.get("hash_rate_available_10m_ph"))
+
+        if status and status != "SPOT_INSTRUMENT_STATUS_ACTIVE":
+            raise RuntimeError(f"Braiins spot market is not active: {status}")
+
+        if best_ask_sat is None or best_ask_sat <= 0:
+            raise ValueError(
+                f"Invalid Braiins best_ask_sat value: {stats.get('best_ask_sat')!r}"
+            )
+
+        # Braiins reports the spot price in satoshis per EH/day.
+        price_btc_per_eh_day = best_ask_sat / 100_000_000
+
+        if api_available_ph is not None and api_available_ph > 0:
+            available_ph = api_available_ph
+
+    except Exception as exc:
+        print(f"Warning: Braiins public pricing request failed: {exc}")
+
+        if BRAIINS_PRICE_OVERRIDE:
+            try:
+                price_btc_per_eh_day = float(BRAIINS_PRICE_OVERRIDE)
+                print(
+                    "Using BRAIINS_BTC_PER_EH_DAY fallback: "
+                    f"{price_btc_per_eh_day:.8f} BTC/EH/day"
+                )
+            except (TypeError, ValueError):
+                print(
+                    "Warning: BRAIINS_BTC_PER_EH_DAY fallback is not a valid number."
+                )
+
+    if price_btc_per_eh_day is None or price_btc_per_eh_day <= 0:
         return None
 
-    price_btc_per_eh_day = float(BRAIINS_PRICE_OVERRIDE)
-    price_btc_per_ph_day = price_btc_per_eh_day / 1000
+    if BRAIINS_AVAILABLE_PH:
+        try:
+            available_ph = float(BRAIINS_AVAILABLE_PH)
+        except (TypeError, ValueError):
+            print(
+                "Warning: BRAIINS_AVAILABLE_PH is not a valid number; "
+                "using API availability."
+            )
 
-    available_ph = float(BRAIINS_AVAILABLE_PH) if BRAIINS_AVAILABLE_PH else 300.0
+    if available_ph is None or available_ph <= 0:
+        available_ph = 300.0
+
+    price_btc_per_ph_day = price_btc_per_eh_day / 1000
 
     return HashSource(
         source="braiins",
