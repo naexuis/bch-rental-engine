@@ -14,10 +14,18 @@ from typing import Any, Dict, List, Optional
 
 import hashlib
 import hmac
-import sqlite3
 import requests
 
 from statistics import mean, pstdev
+
+from scripts.storage.storage_manager import initialize_history_database
+
+from scripts.storage.history_manager import (
+    get_history_rows as storage_get_history_rows,
+    get_history_trend_windows,
+    get_latest_value,
+    insert_history_row,
+)
 
 
 # =============================================================================
@@ -1966,75 +1974,7 @@ def classify_opportunity_action_change(
 
 
 def init_history_db() -> None:
-    with sqlite3.connect(HISTORY_DB_PATH) as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS run_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp TEXT NOT NULL,
-
-                btc_usd REAL,
-                bch_usd REAL,
-                bch_btc REAL,
-                bch_difficulty REAL,
-                bch_network_hashrate_eh REAL,
-
-                best_source TEXT,
-                best_name TEXT,
-                best_hashrate_ph REAL,
-                best_duration_hours REAL,
-                best_cost_usd REAL,
-
-                best_prob_1plus REAL,
-                best_prob_2plus REAL,
-                best_expected_profit_usd REAL,
-                best_roi_pct REAL,
-                best_risk_adjusted_roi_pct REAL,
-
-                best_fair_value_ratio REAL,
-                best_premium_discount_pct REAL,
-                best_alert_tier TEXT,
-                best_recommendation TEXT,
-
-                market_regime TEXT,
-                opportunity_score REAL,
-                opportunity_action TEXT,
-
-                budget_min_usd REAL,
-                budget_max_usd REAL,
-                budget_step_usd REAL,
-
-                braiins_price_btc_per_ph_day REAL,
-                best_mrr_price_btc_per_ph_day REAL,
-
-                scenario_count INTEGER,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-
-        existing_cols = {
-            row[1]
-            for row in conn.execute(
-                "PRAGMA table_info(run_history)"
-            ).fetchall()
-        }
-
-        new_columns = {
-            "market_regime": "TEXT",
-            "opportunity_score": "REAL",
-            "opportunity_action": "TEXT",
-            "budget_min_usd": "REAL",
-            "budget_max_usd": "REAL",
-            "budget_step_usd": "REAL",
-        }
-
-        for col, col_type in new_columns.items():
-            if col not in existing_cols:
-                conn.execute(
-                    f"ALTER TABLE run_history "
-                    f"ADD COLUMN {col} {col_type}"
-                )
-
-        conn.commit()
+    initialize_history_database(HISTORY_DB_PATH)
 
 
 def get_best_source_price(sources: List[HashSource], source_name: str) -> Optional[float]:
@@ -2059,89 +1999,49 @@ def write_history_row(
     braiins_price = get_best_source_price(sources, "braiins")
     best_mrr_price = get_best_source_price(sources, "mrr")
 
-    with sqlite3.connect(HISTORY_DB_PATH) as conn:
-        conn.execute(
-            """
-            INSERT INTO run_history (
-                timestamp,
-                btc_usd,
-                bch_usd,
-                bch_btc,
-                bch_difficulty,
-                bch_network_hashrate_eh,
+    record = {
+        "timestamp": market.timestamp,
+        "btc_usd": market.btc_usd,
+        "bch_usd": market.bch_usd,
+        "bch_btc": market.bch_btc,
+        "bch_difficulty": market.bch_difficulty,
+        "bch_network_hashrate_eh": market.bch_network_hashrate_eh,
 
-                best_source,
-                best_name,
-                best_hashrate_ph,
-                best_duration_hours,
-                best_cost_usd,
+        "best_source": best.source,
+        "best_name": best.name,
+        "best_hashrate_ph": best.hashrate_ph,
+        "best_duration_hours": best.duration_hours,
+        "best_cost_usd": best.cost_usd,
 
-                best_prob_1plus,
-                best_prob_2plus,
-                best_expected_profit_usd,
-                best_roi_pct,
-                best_risk_adjusted_roi_pct,
+        "best_prob_1plus": best.prob_1plus,
+        "best_prob_2plus": best.prob_2plus,
+        "best_expected_profit_usd": best.expected_profit_usd,
+        "best_roi_pct": best.roi_pct,
+        "best_risk_adjusted_roi_pct": best.risk_adjusted_roi_pct,
 
-                best_fair_value_ratio,
-                best_premium_discount_pct,
-                best_alert_tier,
-                best_recommendation,
+        "best_fair_value_ratio": best.fair_value_ratio,
+        "best_premium_discount_pct": best.premium_discount_pct,
+        "best_alert_tier": best.alert_tier,
+        "best_recommendation": best.recommendation,
 
-                market_regime,
-                opportunity_score,
-                opportunity_action,
+        "market_regime": market_regime,
+        "opportunity_score": opportunity.get("score"),
+        "opportunity_action": opportunity.get("action"),
 
-                budget_min_usd,
-                budget_max_usd,
-                budget_step_usd,
+        "budget_min_usd": BUDGET_MIN_USD,
+        "budget_max_usd": BUDGET_MAX_USD,
+        "budget_step_usd": BUDGET_STEP_USD,
 
-                braiins_price_btc_per_ph_day,
-                best_mrr_price_btc_per_ph_day,
+        "braiins_price_btc_per_ph_day": braiins_price,
+        "best_mrr_price_btc_per_ph_day": best_mrr_price,
 
-                scenario_count
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                market.timestamp,
-                market.btc_usd,
-                market.bch_usd,
-                market.bch_btc,
-                market.bch_difficulty,
-                market.bch_network_hashrate_eh,
+        "scenario_count": len(scenarios),
+    }
 
-                best.source,
-                best.name,
-                best.hashrate_ph,
-                best.duration_hours,
-                best.cost_usd,
-
-                best.prob_1plus,
-                best.prob_2plus,
-                best.expected_profit_usd,
-                best.roi_pct,
-                best.risk_adjusted_roi_pct,
-
-                best.fair_value_ratio,
-                best.premium_discount_pct,
-                best.alert_tier,
-                best.recommendation,
-
-                market_regime,
-                opportunity.get("score"),
-                opportunity.get("action"),
-
-                BUDGET_MIN_USD,
-                BUDGET_MAX_USD,
-                BUDGET_STEP_USD,
-
-                braiins_price,
-                best_mrr_price,
-
-                len(scenarios),
-            ),
-        )
-        conn.commit()
+    insert_history_row(
+        db_path=HISTORY_DB_PATH,
+        record=record,
+    )
 
 def get_latest_opportunity_score() -> Optional[float]:
     """
@@ -2150,22 +2050,10 @@ def get_latest_opportunity_score() -> Optional[float]:
     Returns:
         The latest opportunity_score value, or None if no history exists.
     """
-    init_history_db()
-
-    with sqlite3.connect(HISTORY_DB_PATH) as conn:
-        row = conn.execute(
-            """
-            SELECT opportunity_score
-            FROM run_history
-            ORDER BY id DESC
-            LIMIT 1
-            """
-        ).fetchone()
-
-    if row is None:
-        return None
-
-    return row[0]
+    return get_latest_value(
+        db_path=HISTORY_DB_PATH,
+        column_name="opportunity_score",
+    )
 
 def get_latest_opportunity_action() -> Optional[str]:
     """
@@ -2173,30 +2061,11 @@ def get_latest_opportunity_action() -> Optional[str]:
 
     Returns:
         The latest opportunity_action value, or None if no history exists.
-
-    Examples:
-        STRIKE_NOW
-        STRONG_WATCH
-        WATCH
-        WEAK_WATCH
-        WAIT
     """
-    init_history_db()
-
-    with sqlite3.connect(HISTORY_DB_PATH) as conn:
-        row = conn.execute(
-            """
-            SELECT opportunity_action
-            FROM run_history
-            ORDER BY id DESC
-            LIMIT 1
-            """
-        ).fetchone()
-
-    if row is None:
-        return None
-
-    return row[0]
+    return get_latest_value(
+        db_path=HISTORY_DB_PATH,
+        column_name="opportunity_action",
+    )
 
 def get_history_rows(
     limit: int = 10,
@@ -2206,22 +2075,10 @@ def get_history_rows(
 
     Results are returned newest-first.
     """
-    init_history_db()
-
-    with sqlite3.connect(HISTORY_DB_PATH) as conn:
-        conn.row_factory = sqlite3.Row
-
-        rows = conn.execute(
-            """
-            SELECT *
-            FROM run_history
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (limit,),
-        ).fetchall()
-
-    return [dict(row) for row in rows]
+    return storage_get_history_rows(
+        db_path=HISTORY_DB_PATH,
+        limit=limit,
+    )
 
 def calculate_numeric_trend(
     values: List[float],
@@ -2692,8 +2549,6 @@ def calculate_trend_confidence(
     }
 
 def get_history_trends() -> Dict[str, Any]:
-    init_history_db()
-
     windows = {
         "1h": 12,
         "6h": 72,
@@ -2712,51 +2567,11 @@ def get_history_trends() -> Dict[str, Any]:
         "best_mrr_price_btc_per_ph_day",
     ]
 
-    trends = {}
-
-    with sqlite3.connect(HISTORY_DB_PATH) as conn:
-        conn.row_factory = sqlite3.Row
-
-        for label, n_rows in windows.items():
-            rows = conn.execute(
-                f"""
-                SELECT {", ".join(metrics)}
-                FROM run_history
-                ORDER BY id DESC
-                LIMIT ?
-                """,
-                (n_rows,),
-            ).fetchall()
-
-            rows = list(reversed(rows))
-
-            trends[label] = {
-                "rows": len(rows),
-                "metrics": {},
-            }
-
-            if len(rows) < 2:
-                continue
-
-            first = rows[0]
-            last = rows[-1]
-
-            for metric in metrics:
-                start = first[metric]
-                end = last[metric]
-
-                if start is None or end is None or start == 0:
-                    change_pct = None
-                else:
-                    change_pct = ((end - start) / start) * 100
-
-                trends[label]["metrics"][metric] = {
-                    "start": start,
-                    "end": end,
-                    "change_pct": change_pct,
-                }
-
-    return trends
+    return get_history_trend_windows(
+        db_path=HISTORY_DB_PATH,
+        windows=windows,
+        metrics=metrics,
+    )
 
 def send_telegram_alert(message: str) -> bool:
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:

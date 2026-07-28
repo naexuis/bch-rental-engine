@@ -1,0 +1,92 @@
+from __future__ import annotations
+
+import sqlite3
+from pathlib import Path
+from typing import Final
+
+
+RUN_HISTORY_TABLE: Final[str] = "run_history"
+
+
+def initialize_history_database(db_path: Path) -> None:
+    """
+    Create the history database and apply all currently supported schema
+    migrations.
+
+    This function is safe to call multiple times.
+    """
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS {RUN_HISTORY_TABLE} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+
+                btc_usd REAL,
+                bch_usd REAL,
+                bch_btc REAL,
+                bch_difficulty REAL,
+                bch_network_hashrate_eh REAL,
+
+                best_source TEXT,
+                best_name TEXT,
+                best_hashrate_ph REAL,
+                best_duration_hours REAL,
+                best_cost_usd REAL,
+
+                best_prob_1plus REAL,
+                best_prob_2plus REAL,
+                best_expected_profit_usd REAL,
+                best_roi_pct REAL,
+                best_risk_adjusted_roi_pct REAL,
+
+                best_fair_value_ratio REAL,
+                best_premium_discount_pct REAL,
+                best_alert_tier TEXT,
+                best_recommendation TEXT,
+
+                market_regime TEXT,
+                opportunity_score REAL,
+                opportunity_action TEXT,
+
+                budget_min_usd REAL,
+                budget_max_usd REAL,
+                budget_step_usd REAL,
+
+                braiins_price_btc_per_ph_day REAL,
+                best_mrr_price_btc_per_ph_day REAL,
+
+                scenario_count INTEGER,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+
+        existing_columns = {
+            row[1]
+            for row in conn.execute(
+                f"PRAGMA table_info({RUN_HISTORY_TABLE})"
+            ).fetchall()
+        }
+
+        migrations = {
+            "market_regime": "TEXT",
+            "opportunity_score": "REAL",
+            "opportunity_action": "TEXT",
+            "budget_min_usd": "REAL",
+            "budget_max_usd": "REAL",
+            "budget_step_usd": "REAL",
+        }
+
+        for column_name, column_type in migrations.items():
+            if column_name not in existing_columns:
+                conn.execute(
+                    f"""
+                    ALTER TABLE {RUN_HISTORY_TABLE}
+                    ADD COLUMN {column_name} {column_type}
+                    """
+                )
+
+        conn.commit()
