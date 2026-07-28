@@ -3,9 +3,21 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 from typing import Final
+from dataclasses import dataclass
 
 
 RUN_HISTORY_TABLE: Final[str] = "run_history"
+
+@dataclass(frozen=True)
+class StorageHealth:
+    """
+    Summary of the current SQLite database health.
+    """
+
+    database_exists: bool
+    database_size_bytes: int
+    row_count: int
+    integrity_ok: bool
 
 
 def initialize_history_database(db_path: Path) -> None:
@@ -159,3 +171,18 @@ def vacuum_database(
         conn.execute("VACUUM")
 
     return True
+
+def get_storage_health(
+    db_path: Path,
+) -> StorageHealth:
+    """
+    Return a summary of the current storage health.
+    """
+    exists = db_path.exists()
+
+    return StorageHealth(
+        database_exists=exists,
+        database_size_bytes=get_database_size_bytes(db_path),
+        row_count=get_database_row_count(db_path),
+        integrity_ok=check_database_integrity(db_path),
+    )

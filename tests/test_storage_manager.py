@@ -8,6 +8,8 @@ from scripts.storage.storage_manager import (
     initialize_history_database,
     check_database_integrity,
     vacuum_database,
+    StorageHealth,
+    get_storage_health,
 )
 
 
@@ -76,3 +78,32 @@ def test_vacuum_database_completes_for_initialized_database(
 
     assert vacuum_database(db_path) is True
     assert check_database_integrity(db_path) is True
+
+def test_get_storage_health_for_missing_database(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "missing" / "history.db"
+
+    health = get_storage_health(db_path)
+
+    assert isinstance(health, StorageHealth)
+    assert health.database_exists is False
+    assert health.database_size_bytes == 0
+    assert health.row_count == 0
+    assert health.integrity_ok is True
+
+
+def test_get_storage_health_for_initialized_database(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "state" / "history.db"
+
+    initialize_history_database(db_path)
+
+    health = get_storage_health(db_path)
+
+    assert isinstance(health, StorageHealth)
+    assert health.database_exists is True
+    assert health.database_size_bytes > 0
+    assert health.row_count == 0
+    assert health.integrity_ok is True
