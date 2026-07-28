@@ -123,3 +123,21 @@ def get_database_row_count(
         ).fetchone()
 
     return int(result[0]) if result else 0
+
+def check_database_integrity(
+    db_path: Path,
+) -> bool:
+    """
+    Run SQLite's integrity check.
+
+    Returns:
+        True if the database passes the integrity check or does not yet exist.
+        False if corruption is detected.
+    """
+    if not db_path.exists():
+        return True
+
+    with sqlite3.connect(db_path) as conn:
+        result = conn.execute("PRAGMA integrity_check").fetchone()
+
+    return bool(result and result[0] == "ok")

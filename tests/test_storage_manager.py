@@ -6,6 +6,7 @@ from scripts.storage.storage_manager import (
     get_database_row_count,
     get_database_size_bytes,
     initialize_history_database,
+    check_database_integrity,
 )
 
 
@@ -39,3 +40,20 @@ def test_database_metrics_report_initialized_database(
 
     assert get_database_size_bytes(db_path) > 0
     assert get_database_row_count(db_path) == 1
+
+def test_database_integrity_returns_true_when_database_is_missing(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "missing" / "history.db"
+
+    assert check_database_integrity(db_path) is True
+
+
+def test_database_integrity_passes_for_initialized_database(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "state" / "history.db"
+
+    initialize_history_database(db_path)
+
+    assert check_database_integrity(db_path) is True
