@@ -2813,6 +2813,17 @@ def main() -> None:
         print("BCH Solo Rental Strike Engine completed.")
         print(result["answer"])
         print(result.get("interpretation", ""))
+
+        storage_health = result.get("storage_health", {})
+
+        print(
+            "Storage health: "
+            f"exists={storage_health.get('database_exists', False)}, "
+            f"rows={storage_health.get('row_count', 0):,}, "
+            f"size={storage_health.get('database_size_bytes', 0):,} bytes, "
+            f"integrity_ok={storage_health.get('integrity_ok', False)}"
+        )
+
         print(f"Telegram sent: {result['telegram_sent']}")
 
     except Exception as exc:
