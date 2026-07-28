@@ -2393,7 +2393,7 @@ def calculate_trend_strength(
     ):
         strength = "MODERATE"
     else:
-        strength = "UNKNOWN"
+        strength = "WEAK"
 
     return {
         "strength": strength,

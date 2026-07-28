@@ -878,3 +878,13 @@ def test_analyze_metric_reversing():
     assert analysis["acceleration"]["latest_change"] == -5.0
     assert analysis["acceleration"]["acceleration"] == -15.0
     assert analysis["acceleration"]["direction"] == "REVERSING"
+
+def test_calculate_trend_strength_weak_for_low_confidence_stable_trend():
+    strength = calculate_trend_strength(
+        confidence="LOW",
+        volatility="HIGH",
+        persistence=1,
+        direction="STABLE",
+    )
+
+    assert strength["strength"] == "WEAK"
