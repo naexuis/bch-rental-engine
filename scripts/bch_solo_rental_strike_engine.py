@@ -18,7 +18,10 @@ import requests
 
 from statistics import mean, pstdev
 
-from scripts.storage.storage_manager import initialize_history_database
+from scripts.storage.storage_manager import (
+    get_storage_health,
+    initialize_history_database,
+)
 
 from scripts.storage.history_manager import (
     get_history_rows as storage_get_history_rows,
@@ -2573,6 +2576,12 @@ def get_history_trends() -> Dict[str, Any]:
         metrics=metrics,
     )
 
+def get_storage_health_record() -> Dict[str, Any]:
+    """
+    Return the current storage health as a JSON-serializable dictionary.
+    """
+    return asdict(get_storage_health(HISTORY_DB_PATH))
+
 def send_telegram_alert(message: str) -> bool:
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         print("Telegram not configured; skipping alert.")
@@ -2765,6 +2774,7 @@ def run_engine() -> Dict[str, Any]:
             "hashrate_step_ph": HASHRATE_STEP_PH,
         },
         "trends": trends,
+        "storage_health": get_storage_health_record(),
         "market_regime": market_regime,
         "opportunity": opportunity,
         "budget_frontier": budget_frontier,
