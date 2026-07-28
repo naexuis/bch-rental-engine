@@ -141,3 +141,21 @@ def check_database_integrity(
         result = conn.execute("PRAGMA integrity_check").fetchone()
 
     return bool(result and result[0] == "ok")
+
+def vacuum_database(
+    db_path: Path,
+) -> bool:
+    """
+    Run SQLite VACUUM to reclaim unused space.
+
+    Returns:
+        True if the operation completed successfully.
+        False if the database does not yet exist.
+    """
+    if not db_path.exists():
+        return False
+
+    with sqlite3.connect(db_path) as conn:
+        conn.execute("VACUUM")
+
+    return True

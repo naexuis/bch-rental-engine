@@ -7,6 +7,7 @@ from scripts.storage.storage_manager import (
     get_database_size_bytes,
     initialize_history_database,
     check_database_integrity,
+    vacuum_database,
 )
 
 
@@ -56,4 +57,22 @@ def test_database_integrity_passes_for_initialized_database(
 
     initialize_history_database(db_path)
 
+    assert check_database_integrity(db_path) is True
+
+def test_vacuum_database_returns_false_when_database_is_missing(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "missing" / "history.db"
+
+    assert vacuum_database(db_path) is False
+
+
+def test_vacuum_database_completes_for_initialized_database(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "state" / "history.db"
+
+    initialize_history_database(db_path)
+
+    assert vacuum_database(db_path) is True
     assert check_database_integrity(db_path) is True
