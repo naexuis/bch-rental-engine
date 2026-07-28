@@ -2632,6 +2632,7 @@ def build_waiting_for_pricing_record(
         "should_alert": False,
         "telegram_sent": False,
         "data_sanity_issues": [error_message],
+        "storage_health": get_storage_health_record(),
         "market_regime": "WAITING",
         "opportunity": {
             "score": 0,
