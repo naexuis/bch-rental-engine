@@ -90,3 +90,36 @@ def initialize_history_database(db_path: Path) -> None:
                 )
 
         conn.commit()
+
+
+def get_database_size_bytes(
+    db_path: Path,
+) -> int:
+    """
+    Return the current SQLite database size in bytes.
+
+    Returns zero if the database does not yet exist.
+    """
+    if not db_path.exists():
+        return 0
+
+    return db_path.stat().st_size
+
+
+def get_database_row_count(
+    db_path: Path,
+) -> int:
+    """
+    Return the number of history rows currently stored.
+
+    Returns zero if the database does not yet exist.
+    """
+    if not db_path.exists():
+        return 0
+
+    with sqlite3.connect(db_path) as conn:
+        result = conn.execute(
+            f"SELECT COUNT(*) FROM {RUN_HISTORY_TABLE}"
+        ).fetchone()
+
+    return int(result[0]) if result else 0
