@@ -2,6 +2,7 @@ from scripts.bch_solo_rental_strike_engine import (
     calculate_opportunity_score,
     classify_alert_tier,
     recommendation_from_tier,
+    determine_canonical_decision,
 )
 
 
@@ -87,3 +88,74 @@ def test_near_strike_requires_minimum_block_probability():
     )
 
     assert tier == "WATCH_IMPROVING"
+
+def test_canonical_decision_unavailable():
+    assert (
+        determine_canonical_decision(
+            fair_value_ratio=1.20,
+            risk_adjusted_roi_pct=20.0,
+            prob_1plus=0.90,
+            executable=False,
+        )
+        == "UNAVAILABLE"
+    )
+
+
+def test_canonical_decision_rent_now():
+    assert (
+        determine_canonical_decision(
+            fair_value_ratio=1.10,
+            risk_adjusted_roi_pct=10.0,
+            prob_1plus=0.70,
+            executable=True,
+        )
+        == "RENT_NOW"
+    )
+
+
+def test_canonical_decision_ready():
+    assert (
+        determine_canonical_decision(
+            fair_value_ratio=1.03,
+            risk_adjusted_roi_pct=0.1,
+            prob_1plus=0.70,
+            executable=True,
+        )
+        == "READY"
+    )
+
+
+def test_canonical_decision_watch_closely():
+    assert (
+        determine_canonical_decision(
+            fair_value_ratio=0.98,
+            risk_adjusted_roi_pct=-5.0,
+            prob_1plus=0.50,
+            executable=True,
+        )
+        == "WATCH_CLOSELY"
+    )
+
+
+def test_canonical_decision_watch():
+    assert (
+        determine_canonical_decision(
+            fair_value_ratio=0.90,
+            risk_adjusted_roi_pct=-15.0,
+            prob_1plus=0.20,
+            executable=True,
+        )
+        == "WATCH"
+    )
+
+
+def test_canonical_decision_wait():
+    assert (
+        determine_canonical_decision(
+            fair_value_ratio=0.89,
+            risk_adjusted_roi_pct=20.0,
+            prob_1plus=0.90,
+            executable=True,
+        )
+        == "WAIT"
+    )

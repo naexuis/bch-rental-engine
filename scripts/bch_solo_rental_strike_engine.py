@@ -370,6 +370,54 @@ def classify_market_regime(fair_value_ratio: float) -> str:
         return "OVERPRICED"
     return "EXTREMELY_OVERPRICED"
 
+def determine_canonical_decision(
+    fair_value_ratio: float,
+    risk_adjusted_roi_pct: float,
+    prob_1plus: float,
+    executable: bool,
+) -> str:
+    """
+    Return the canonical operator decision for one strike scenario.
+
+    Current canonical states:
+        RENT_NOW
+        READY
+        WATCH_CLOSELY
+        WATCH
+        WAIT
+        UNAVAILABLE
+
+    This function is initially additive and does not yet replace the
+    existing alert-tier, recommendation, or opportunity-action logic.
+    """
+    if not executable:
+        return "UNAVAILABLE"
+
+    if (
+        fair_value_ratio >= 1.10
+        and risk_adjusted_roi_pct >= 10.0
+        and prob_1plus >= 0.70
+    ):
+        return "RENT_NOW"
+
+    if (
+        fair_value_ratio >= 1.03
+        and risk_adjusted_roi_pct > 0.0
+        and prob_1plus >= 0.70
+    ):
+        return "READY"
+
+    if (
+        fair_value_ratio >= 0.98
+        and prob_1plus >= 0.50
+    ):
+        return "WATCH_CLOSELY"
+
+    if fair_value_ratio >= 0.90:
+        return "WATCH"
+
+    return "WAIT"
+
 def calculate_opportunity_score(
     fair_value_ratio: float,
     prob_1plus: float,
