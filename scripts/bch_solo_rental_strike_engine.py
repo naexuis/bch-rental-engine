@@ -351,7 +351,7 @@ def classify_alert_tier(
     if fair_value_ratio >= 1.03 and risk_adjusted_roi_pct > 0:
         return "DEPLOY_NOW"
 
-    if fair_value_ratio >= 0.98:
+    if fair_value_ratio >= 0.98 and prob_1plus >= 0.50:
         return "NEAR_STRIKE"
 
     if fair_value_ratio >= 0.90:
