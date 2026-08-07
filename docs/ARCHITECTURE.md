@@ -1,66 +1,88 @@
+# BCH Rental Engine
 # Architecture Guide
 
-The BCH Rental Engine is a layered decision-support platform for evaluating Bitcoin Cash hashpower rental opportunities.
+**Architecture Revision:** 3.0
 
-The engine is designed around one guiding principle:
+**Application Release:** 0.1.x
 
-> **Every recommendation should be transparent, explainable, testable, and backed by measurable evidence.**
-
-Unlike traditional mining calculators, the BCH Rental Engine does not simply calculate profitability.
-
-It explains:
-
-- What should be done
-- Why that recommendation was produced
-- What changed since the previous execution
-- Which market conditions are improving or deteriorating
-- What is preventing a stronger recommendation
+**Architecture Status:** Stable (Canonical Decision Architecture)
 
 ---
 
-# Current Version
+# Purpose
 
-**Version:** v2.3.0
+The BCH Rental Engine is an explainable decision-support platform for evaluating Bitcoin Cash solo-mining rental opportunities.
 
-**Architecture Status:** Stable
+Unlike traditional mining calculators that simply estimate mining profitability, the BCH Rental Engine continuously evaluates market conditions, generates executable rental scenarios, produces a single canonical operator decision, explains the reasoning behind every recommendation, tracks historical changes, and presents actionable guidance to the operator.
+
+The guiding philosophy of the project is simple:
+
+> **Every recommendation should be transparent, explainable, reproducible, testable, and backed by measurable evidence.**
+
+The engine is designed to answer four fundamental questions:
+
+- Should I rent hashpower?
+- Why was that recommendation made?
+- What changed since the last analysis?
+- What must improve before a stronger recommendation can be made?
 
 ---
 
-# Design Philosophy
+# Design Principles
 
-The BCH Rental Engine is built around six core principles.
+The BCH Rental Engine is built around seven architectural principles.
 
-## 1. Explainability
+## 1. Single Source of Truth
 
-Every recommendation should be understandable.
+Business decisions are made exactly once.
 
-The operator should never have to trust a black box.
+The engine contains a single **Canonical Decision Engine** that determines the operator recommendation.
 
-Instead, the engine explains:
+Current outputs derived from the canonical decision include:
 
-- Opportunity Score
+- Alert Tier
 - Recommendation
-- Trend
-- Score Limiter
-- Historical changes
-- Current blockers
+- Opportunity Action
+- Dashboard presentation
+
+Additional consumers (history persistence and notifications) will migrate to the canonical decision over time while maintaining backward compatibility.
 
 ---
 
-## 2. Layered Architecture
+## 2. Explainability
 
-Each architectural layer has a single responsibility.
+Operators should never have to trust a black box.
+
+Every recommendation should explain:
+
+- Why it was produced
+- Current Opportunity Score
+- Canonical Decision
+- Market Regime
+- Historical trend
+- Current blockers
+- Supporting economic metrics
+
+---
+
+## 3. Separation of Responsibilities
+
+Every subsystem performs one responsibility.
 
 ```
 Market Data
 
 ↓
 
-Decision Engine
+Scenario Generation
 
 ↓
 
-History
+Canonical Decision
+
+↓
+
+Persistence
 
 ↓
 
@@ -68,38 +90,20 @@ Analytics
 
 ↓
 
-Explainability
+Presentation
 
 ↓
 
 Operator
 ```
 
-This separation allows each subsystem to evolve independently.
+This layered architecture allows each subsystem to evolve independently.
 
 ---
 
-## 3. Modularity
+## 4. Test-Driven Development
 
-Every subsystem should perform exactly one job.
-
-Examples
-
-- Market Data
-- Opportunity Scoring
-- Recommendation Engine
-- History
-- Analytics
-- Dashboard
-- Telegram
-
-No subsystem should contain unrelated logic.
-
----
-
-## 4. Testability
-
-Every new capability follows the same engineering workflow.
+Every architectural change follows the same engineering workflow.
 
 ```
 Design
@@ -118,10 +122,6 @@ Compile
 
 ↓
 
-Runtime Validation
-
-↓
-
 Regression Tests
 
 ↓
@@ -137,333 +137,309 @@ Push
 Release
 ```
 
-This workflow has become a core architectural principle.
+Architecture changes are introduced incrementally and validated with automated regression testing.
 
 ---
 
 ## 5. Portability
 
-The engine runs on
+The engine is designed to run from the same codebase on multiple platforms.
+
+Supported environments include:
 
 - Umbrel
 - Ubuntu
+- Docker
 - Raspberry Pi
 - AWS
 - DigitalOcean
-- Local Linux workstations
-
-using the same codebase.
+- Local Linux Workstations
 
 ---
 
-## 6. Explainable Intelligence
+## 6. Backward Compatibility
 
-The engine favors transparent analytics over opaque prediction.
+Major architectural improvements are introduced without breaking existing deployments.
 
-Every recommendation should be reproducible from the underlying data.
+Compatibility layers remain in place until all downstream consumers have migrated.
+
+---
+
+## 7. Explainable Intelligence
+
+Analytics should improve operator understanding—not replace it.
+
+Every recommendation should be reproducible from measurable data.
 
 ---
 
 # High-Level Architecture
 
 ```
-                    External APIs
-                          │
-                          ▼
-                   Market Data Layer
-                          │
-                          ▼
-                 Opportunity Scoring
-                          │
-                          ▼
-                Recommendation Engine
-                          │
-        ┌─────────────────┼──────────────────┐
-        ▼                 ▼                  ▼
-  History Database    JSON State        JSONL Logs
-        │
-        ▼
-    Analytics Layer
-        │
-        ▼
-  Explainability Layer
-        │
-        ▼
- Dashboard / Telegram / Operator
+                   External APIs
+                         │
+                         ▼
+                  Market Data Layer
+                         │
+                         ▼
+             Scenario Generation
+                         │
+                         ▼
+          Canonical Decision Engine
+                         │
+        ┌────────────────┼─────────────────┐
+        ▼                ▼                 ▼
+  Alert Tier     Recommendation    Opportunity Action
+                         │
+                         ▼
+                Persistence Layer
+        ┌────────────────┼────────────────┐
+        ▼                ▼                ▼
+ SQLite History     JSON State      JSONL Logs
+                         │
+                         ▼
+                 Analytics Layer
+                         │
+                         ▼
+              Explainability Layer
+                         │
+                         ▼
+ Dashboard • Notifications • CLI
 ```
 
 ---
 
-# Layer 1 — Market Data
+# Repository Structure
 
-Purpose
+```
+bch-rental-engine/
 
-Collect the current BCH mining environment.
+├── config/
+├── dashboard/
+├── docs/
+├── logs/
+├── scripts/
+├── state/
+├── tests/
+├── Dockerfile
+├── Dockerfile.dashboard
+└── docker-compose.yml
+```
 
-Current sources
+The repository is organized so that each major subsystem is isolated from the others.
+
+---
+
+# Architectural Layers
+
+## Layer 1 — Market Data
+
+Purpose:
+
+Collect the current Bitcoin Cash mining environment.
+
+Current providers include:
 
 - CoinGecko
 - Braiins Hashpower
 - MiningRigRentals
 - BCH Network
 
-Outputs
+Current outputs include:
 
-- BTC price
 - BCH price
-- Difficulty
+- BTC price
+- Network difficulty
 - Network hashrate
 - Rental pricing
-- Available hashrate
+- Available rental hashrate
 
 ---
 
-# Layer 2 — Opportunity Scoring
+## Layer 2 — Scenario Generation
 
-Purpose
+Purpose:
 
-Evaluate every feasible rental scenario.
+Generate every executable rental scenario within the configured operational constraints.
 
-Current scoring inputs
+Each scenario evaluates:
+
+- Budget
+- Rental source
+- Rental duration
+- Hashrate
+- Expected blocks
+- Expected revenue
+- Expected profit
+- Risk-adjusted ROI
+- Fair Value Ratio
+- Probability of finding one or more blocks
+
+Only executable scenarios continue into the Canonical Decision Engine.
+
+---
+
+## Layer 3 — Canonical Decision Engine
+
+The Canonical Decision Engine is the heart of the BCH Rental Engine.
+
+Every operator recommendation originates from a single function:
+
+```
+determine_canonical_decision()
+```
+
+Current canonical decisions are:
+
+```
+RENT_NOW
+
+READY
+
+WATCH_CLOSELY
+
+WATCH
+
+WAIT
+
+UNAVAILABLE
+```
+
+The Canonical Decision Engine evaluates:
 
 - Fair Value Ratio
 - Risk-adjusted ROI
-- Probability of finding a block
-- Market Regime
+- Probability thresholds
+- Scenario executability
 
-Outputs
+No other subsystem independently determines whether the operator should rent.
 
-- Opportunity Score
-- Opportunity Action
-
-Economic caps ensure poor economics never appear attractive.
-
-Current caps
+For implementation details, see:
 
 ```
-FVR < 0.85
-
-↓
-
-Score capped at 39
-
-FVR < 0.90
-
-↓
-
-Score capped at 49
-
-ROI < -10%
-
-↓
-
-Score capped at 54
-
-ROI < 0%
-
-↓
-
-Score capped at 69
+docs/RECOMMENDATION_DECISION_MODEL.md
 ```
 
 ---
 
-# Layer 3 — Recommendation Engine
+## Layer 4 — Compatibility Layer
 
-Purpose
+Legacy interfaces are currently derived from the Canonical Decision.
 
-Convert Opportunity Scores into operator recommendations.
+Current compatibility outputs include:
 
-Outputs
-
-- RENT
-- WATCH
-- DO NOT RENT
-
-Supporting classifications
-
-- STRIKE_NOW
-- STRONG_WATCH
-- WATCH
-- WEAK_WATCH
-- WAIT
-
----
-
-# Layer 4 — Historical Intelligence
-
-Purpose
-
-Persist every recommendation.
-
-Storage
-
-SQLite
-
-Historical data includes
-
-- Opportunity Score
-- Opportunity Action
-- Market Regime
+- Alert Tier
 - Recommendation
-- ROI
-- FVR
+- Opportunity Action
+
+This compatibility layer allows the internal architecture to evolve while preserving existing APIs, dashboards, and historical data.
+
+---
+
+## Layer 5 — Opportunity Scoring
+
+The Opportunity Score measures **opportunity attractiveness**, not operator guidance.
+
+Current scoring inputs include:
+
+- Fair Value Ratio
 - Probability
-- Difficulty
-- Pricing
+- Risk-adjusted ROI
+- Market Regime
 
-The history subsystem also tracks
+Current output:
 
-- Previous Action
-- Previous Opportunity Score
-- Score Delta
-- Action Classification
+```
+Opportunity Score
+```
+
+The Opportunity Score supports decision making but does **not** determine the recommendation.
+
+The recommendation is determined exclusively by the Canonical Decision Engine.
 
 ---
 
-# Layer 5 — Analytics
+## Layer 6 — Persistence
 
-The analytics layer converts historical data into reusable analytical primitives.
+The engine maintains three independent persistence mechanisms.
 
-Current architecture
+### SQLite
 
-```
-SQLite
+Long-term historical storage.
 
-↓
+### JSON
 
-History Retrieval
+Current engine state.
 
-↓
+### JSONL
 
-Metric Extraction
+Operational logs.
 
-↓
+Each persistence mechanism serves a different operational purpose.
 
-Numeric Trend
-
-↓
-
-Trend Persistence
-```
-
-Current primitives
-
-### History
-
-```
-get_history_rows()
-```
-
-### Numeric Trends
-
-```
-calculate_numeric_trend()
-```
-
-### Metric Trends
-
-```
-calculate_metric_trend()
-```
-
-### Trend Persistence
-
-```
-calculate_trend_persistence()
-```
-
-These functions are intentionally generic and reusable.
-
-They are not BCH-specific.
+Future releases will continue migrating additional canonical decision information into historical storage while maintaining backward compatibility.
 
 ---
 
-# Layer 6 — Explainability
+## Layer 7 — Analytics
 
-Purpose
+Historical information is converted into reusable analytical primitives.
+
+Current capabilities include:
+
+- Historical retrieval
+- Numeric trends
+- Trend strength
+- Trend persistence
+- Opportunity Score changes
+- Recommendation changes
+
+Analytics functions are intentionally generic and reusable.
+
+---
+
+## Layer 8 — Explainability
+
+Purpose:
 
 Transform analytical results into operator-facing explanations.
 
-Current presentation helpers
+Current explanations include:
 
-```
-build_opportunity_history_section()
+- Recommendation reasoning
+- Opportunity history
+- Trend analysis
+- Score limiters
+- Economic blockers
 
-build_score_limiter_section()
+The Explainability Layer answers:
 
-build_opportunity_trend_section()
-```
-
-The engine now explains
-
-- What changed
-- Current trend
-- Why the score is limited
-- Market blockers
-- Conditions required to rent
+- What changed?
+- Why did it change?
+- What is preventing a stronger recommendation?
+- What conditions must improve before renting?
 
 ---
 
-# Persistence Layer
+## Layer 9 — Presentation
 
-Current State
+Presentation layers consume engine outputs.
 
-```
-state/
+Current presentation layers include:
 
-bch_solo_rental_strike_engine.json
-```
+- Streamlit Dashboard
+- Command Line Interface (CLI)
 
-Historical State
+Current integrations under migration include:
 
-```
-state/
+- Telegram Notifications
+- Future Discord Notifications
 
-bch_rental_history.sqlite
-```
-
-Operational Logs
-
-```
-logs/
-
-*.jsonl
-```
-
-Each storage mechanism serves a different purpose.
+Presentation layers do **not** contain business decision logic.
 
 ---
 
-# Dashboard
-
-The dashboard performs no optimization.
-
-Instead it consumes
-
-- JSON State
-- SQLite History
-
-The engine remains the single source of truth.
-
----
-
-# Telegram
-
-Telegram notifications are intentionally lightweight.
-
-Alerts summarize
-
-- Recommendation
-- Opportunity Score
-- Market Regime
-- Significant changes
-
-Future versions will incorporate Trend Intelligence.
-
----
-
-# Data Flow
+# Current Data Flow
 
 ```
 Market APIs
@@ -472,116 +448,167 @@ Market APIs
 Market Data
       │
       ▼
-Opportunity Scoring
+Scenario Generation
       │
       ▼
-Recommendation Engine
+Canonical Decision Engine
       │
-      ├─────────────┐
-      ▼             ▼
-SQLite        JSON State
-      │             │
-      ▼             ▼
-Analytics     Dashboard
+      ├────────► Alert Tier
+      ├────────► Recommendation
+      ├────────► Opportunity Action
+      │
+      ▼
+Persistence
+      │
+      ▼
+Analytics
       │
       ▼
 Explainability
       │
       ▼
-Operator
+Dashboard / CLI / Notifications
 ```
+
+---
+
+# Documentation Map
+
+The BCH Rental Engine documentation is organized into focused documents.
+
+| Document | Purpose |
+|----------|---------|
+| **ARCHITECTURE.md** | High-level system architecture |
+| **RECOMMENDATION_DECISION_MODEL.md** | Canonical Decision Engine design |
+| **RECOMMENDATION_HISTORY.md** | Historical recommendation storage |
+| **UMBREL_RELEASE_PROCESS.md** | Production release workflow |
+| **INSTALL.md** | Installation instructions |
+| **CONFIGURATION.md** | Runtime configuration |
+| **OPERATIONS.md** | Day-to-day operational procedures |
+| **ROADMAP.md** | Planned features and future milestones |
+| **CHANGELOG.md** | Release history |
+| **DECISION_LOG.md** | Major architectural decisions |
+
+Each subsystem should have one authoritative document.
+
+ARCHITECTURE.md serves as the high-level entry point into the project documentation.
 
 ---
 
 # Testing Architecture
 
-The project currently contains dedicated test suites for
+The BCH Rental Engine uses layered automated testing.
 
-- Recommendation History
-- Opportunity Scoring
-- Interpretation
-- Trend Analytics
+Current coverage includes:
 
-Regression tests currently validate
-
+- Recommendation Logic
+- Canonical Decision Engine
 - Opportunity Scoring
 - Recommendation History
-- Trend Analysis
-- Interpretation
+- Trend Intelligence
+- Dashboard Decision Mapping
 - Explainability
+- Historical Analytics
 
-Every architectural layer is protected by automated tests.
+Current status:
+
+```
+125+ Automated Tests
+```
+
+Every architectural layer is protected by automated regression tests.
 
 ---
 
-# Release Evolution
+# Release Architecture
 
-| Version | Major Architectural Addition |
-|----------|------------------------------|
-| v1.0 | Core Engine |
-| v1.1 | Dashboard |
-| v2.0 | Operator Console |
-| v2.1 | Operations Toolkit |
-| v2.2 | Opportunity Intelligence & Explainability |
-| v2.3 | Trend Intelligence |
+Application releases follow the documented production workflow.
+
+```
+Development Repository
+        │
+        ▼
+Production Umbrel Build
+        │
+        ▼
+Docker Image
+        │
+        ▼
+GitHub Container Registry (GHCR)
+        │
+        ▼
+Umbrel App Store Repository
+        │
+        ▼
+Umbrel Installation
+```
+
+The complete release procedure is documented in:
+
+```
+docs/UMBREL_RELEASE_PROCESS.md
+```
+
+---
+
+# Current Architecture Status
+
+The current architecture includes:
+
+- ✅ Market Data Layer
+- ✅ Scenario Generation Engine
+- ✅ Canonical Decision Engine
+- ✅ Compatibility Layer
+- ✅ Opportunity Scoring
+- ✅ Persistence Layer
+- ✅ Analytics Layer
+- ✅ Explainability Layer
+- ✅ Streamlit Dashboard
+- ✅ Native Umbrel Deployment
+- ✅ Automated Test Suite
+
+Current architecture is considered stable.
 
 ---
 
 # Future Architecture
 
-The next architectural additions will expand the Analytics Layer.
+Planned architectural additions include:
 
-Planned
+- Canonical Decision persistence
+- Decision Confidence model
+- Notification migration
+- Historical decision analytics
+- Trend forecasting
+- Volatility analysis
+- Autonomous strike detection
+- Strategy simulation
 
-```
-History
-
-↓
-
-Metric Analysis
-
-↓
-
-Trend
-
-↓
-
-Persistence
-
-↓
-
-Trend Confidence
-
-↓
-
-Volatility
-
-↓
-
-Forecasting
-
-↓
-
-Autonomous Strike Detection
-```
-
-Each capability will build on the previous layer rather than introducing unrelated functionality.
+Future capabilities should extend the existing layered architecture rather than introducing parallel decision systems.
 
 ---
 
 # Long-Term Vision
 
-The BCH Rental Engine has evolved from a profitability calculator into a layered decision-support platform.
+The BCH Rental Engine has evolved from a mining profitability calculator into a complete decision-support platform.
 
-Future development will continue to prioritize
+The long-term objective is to build a system that operators trust because every recommendation is:
 
-- Explainability
-- Analytics
+- Transparent
+- Explainable
+- Reproducible
+- Testable
+- Historically traceable
+- Operationally actionable
+
+Future development will continue to emphasize:
+
+- Simplicity
+- Modularity
+- Architectural consistency
+- Explainable analytics
 - Historical intelligence
-- Trend analysis
-- Forecasting
-- Operational tooling
+- Decision quality
+- Operational reliability
 
-The long-term objective is not simply to predict profitable rentals.
-
-The objective is to build a platform that operators trust because every recommendation is transparent, measurable, reproducible, and explainable.
+Every new capability should strengthen the existing architecture rather than increase complexity.
