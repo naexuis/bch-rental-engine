@@ -28,6 +28,53 @@ def safe_num(value, default=0.0):
         return default
     return value
 
+def canonical_decision_from_state(
+    opportunity: dict,
+    recommendation: str,
+) -> str:
+    """
+    Return the canonical decision from current engine state.
+
+    Older state files may not contain canonical_decision, so preserve
+    compatibility by translating the legacy recommendation.
+    """
+    canonical_decision = str(
+        opportunity.get("canonical_decision", "")
+    ).strip().upper()
+
+    valid_decisions = {
+        "RENT_NOW",
+        "READY",
+        "WATCH_CLOSELY",
+        "WATCH",
+        "WAIT",
+        "UNAVAILABLE",
+    }
+
+    if canonical_decision in valid_decisions:
+        return canonical_decision
+
+    legacy_recommendation = (
+        str(recommendation)
+        .strip()
+        .upper()
+        .replace("_", " ")
+    )
+
+    legacy_mapping = {
+        "STRONG RENT": "RENT_NOW",
+        "RENT": "READY",
+        "NEAR STRIKE": "WATCH_CLOSELY",
+        "WATCH": "WATCH",
+        "DO NOT RENT": "WAIT",
+        "WAIT": "UNAVAILABLE",
+    }
+
+    return legacy_mapping.get(
+        legacy_recommendation,
+        "WAIT",
+    )
+
 def summarize_technical_indicators(df: pd.DataFrame) -> dict:
     """
     Summarize the latest technical state for display in the dashboard.
@@ -572,6 +619,10 @@ if page == "Dashboard":
         best.get("recommendation", state.get("recommendation", "N/A"))
     ).upper()
     recommendation = recommendation.replace("_", " ")
+    canonical_decision = canonical_decision_from_state(
+        opportunity=opportunity,
+        recommendation=recommendation,
+    )
     market_regime = str(state.get("market_regime", "N/A")).upper()
 
     opportunity_score = safe_num(opportunity.get("score", 0))
@@ -588,55 +639,50 @@ if page == "Dashboard":
         else 0.0
     )
 
-    # Operator-facing action derived from the engine recommendation.
+    # Operator-facing rendering derived from the canonical engine decision.
     operator_action = {
-        "STRONG_RENT": "RENT NOW",
-        "RENT": "RENT",
+        "RENT_NOW": "RENT NOW",
+        "READY": "RENT",
+        "WATCH_CLOSELY": "WATCH",
         "WATCH": "WATCH",
-        "MONITOR": "MONITOR",
-        "NEAR STRIKE": "WATCH",
-        "WAIT": "WAITING",
-        "DO NOT RENT": "DO NOT RENT",
-    }.get(recommendation, "DO NOT RENT")
+        "WAIT": "DO NOT RENT",
+        "UNAVAILABLE": "WAITING",
+    }.get(canonical_decision, "DO NOT RENT")
 
-    # Human-readable market condition.
     recommendation_title = {
-        "STRONG_RENT": "Excellent Rental Opportunity",
-        "RENT": "Rental Opportunity",
-        "WATCH": "Near Strike Opportunity",
-        "MONITOR": "Continue Monitoring",
-        "NEAR STRIKE": "Near Strike Opportunity",
-        "WAIT": "Waiting for Pricing Data",
-        "DO NOT RENT": "Unfavorable Rental Conditions",
-    }.get(recommendation, "Unfavorable Rental Conditions")
+        "RENT_NOW": "Excellent Rental Opportunity",
+        "READY": "Rental Opportunity",
+        "WATCH_CLOSELY": "Near Strike Opportunity",
+        "WATCH": "Continue Monitoring",
+        "WAIT": "Unfavorable Rental Conditions",
+        "UNAVAILABLE": "Waiting for Pricing Data",
+    }.get(
+        canonical_decision,
+        "Unfavorable Rental Conditions",
+    )
 
-    # Human-readable operator guidance.
     recommendation_message = {
-        "STRONG_RENT": (
+        "RENT_NOW": (
             "Multiple indicators align. Conditions favor executing a rental."
         ),
-        "RENT": "Current conditions support renting hashpower.",
-        "WATCH": (
-            "Market conditions are approaching the strike threshold. "
-            "Continue monitoring."
-        ),
-        "MONITOR": (
-            "Conditions are improving but do not justify a rental yet."
-        ),
-        "NEAR STRIKE": (
+        "READY": "Current conditions support renting hashpower.",
+        "WATCH_CLOSELY": (
             "Conditions are close to the strike threshold. "
             "Continue monitoring before renting."
         ),
+        "WATCH": (
+            "Conditions may be improving but do not justify a rental yet."
+        ),
         "WAIT": (
+            "Current market conditions do not support renting hashpower."
+        ),
+        "UNAVAILABLE": (
             "Live BCH market data was retrieved successfully, but no hashpower "
             "pricing source is currently available. Strike recommendations will "
             "resume automatically once pricing data becomes available."
         ),
-        "DO NOT RENT": (
-            "Current market conditions do not support renting hashpower."
-        ),
     }.get(
-        recommendation,
+        canonical_decision,
         "Current market conditions do not support renting hashpower.",
     )
 
