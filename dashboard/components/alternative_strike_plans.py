@@ -8,7 +8,9 @@ from dashboard.ui_utils import (
     fmt_hashrate_from_ph,
     safe_num,
 )
-
+from dashboard.frontier_data import (
+    build_frontier_dataframe,
+)
 
 
 def render_alternative_strike_plans(
@@ -25,54 +27,7 @@ def render_alternative_strike_plans(
         st.info("No alternative strike plans are available yet.")
         return
 
-    rows = []
-
-    for item in frontier:
-        frontier_best = (
-            item.get("best_score", {})
-            or item.get("best_probability", {})
-        )
-
-        rows.append(
-            {
-                "budget_usd": safe_num(
-                    item.get(
-                        "budget_usd",
-                        frontier_best.get("cost_usd", 0),
-                    )
-                ),
-                "cost_usd": safe_num(
-                    frontier_best.get("cost_usd", 0)
-                ),
-                "hashrate": fmt_hashrate_from_ph(
-                    frontier_best.get("hashrate_ph", 0)
-                ),
-                "duration_hours": safe_num(
-                    frontier_best.get("duration_hours", 0)
-                ),
-                "prob_1plus_pct": (
-                    safe_num(frontier_best.get("prob_1plus", 0)) * 100
-                ),
-                "prob_2plus_pct": (
-                    safe_num(frontier_best.get("prob_2plus", 0)) * 100
-                ),
-                "fvr": safe_num(
-                    frontier_best.get("fair_value_ratio", 0)
-                ),
-                "risk_roi_pct": safe_num(
-                    frontier_best.get("risk_adjusted_roi_pct", 0)
-                ),
-                "recommendation": frontier_best.get(
-                    "recommendation",
-                    "N/A",
-                ),
-                "source": str(
-                    frontier_best.get("source", "N/A")
-                ).upper(),
-            }
-        )
-
-    frontier_df = pd.DataFrame(rows)
+    frontier_df = build_frontier_dataframe(frontier)
 
     display_frontier_df = frontier_df.copy()
 
