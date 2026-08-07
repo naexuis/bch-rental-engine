@@ -481,6 +481,28 @@ def recommendation_from_tier(alert_tier: str) -> str:
         return "WATCH"
     return "DO NOT RENT"
 
+def recommendation_from_canonical_decision(
+    canonical_decision: str,
+) -> str:
+    """
+    Return the legacy scenario recommendation derived from the
+    canonical decision.
+    """
+    recommendation_by_decision = {
+        "RENT_NOW": "RENT",
+        "READY": "RENT",
+        "WATCH_CLOSELY": "NEAR STRIKE",
+        "WATCH": "WATCH",
+        "WAIT": "DO NOT RENT",
+        "UNAVAILABLE": "WAIT",
+    }
+
+    try:
+        return recommendation_by_decision[canonical_decision]
+    except KeyError as exc:
+        raise ValueError(
+            f"Unsupported canonical decision: {canonical_decision!r}"
+        ) from exc
 
 def load_pool_config(path: Path = POOLS_CONFIG_PATH) -> List[Dict[str, Any]]:
     if not path.exists():
@@ -1295,6 +1317,13 @@ def build_and_score_scenarios(
                 )
 
                 grade = classify_strike_grade(fair_value_ratio)
+                canonical_decision = determine_canonical_decision(
+                    fair_value_ratio=fair_value_ratio,
+                    risk_adjusted_roi_pct=risk_adjusted_roi_pct,
+                    prob_1plus=prob_1plus,
+                    executable=source.executable,
+                )
+
                 tier = classify_alert_tier(
                     fair_value_ratio=fair_value_ratio,
                     risk_adjusted_roi_pct=risk_adjusted_roi_pct,
@@ -1334,7 +1363,7 @@ def build_and_score_scenarios(
                         strike_score=strike_score,
                         strike_grade=grade,
                         alert_tier=tier,
-                        recommendation=recommendation_from_tier(tier),
+                        recommendation=recommendation_from_canonical_decision(canonical_decision),
                     )
                 )
             target_hashrate_ph += HASHRATE_STEP_PH

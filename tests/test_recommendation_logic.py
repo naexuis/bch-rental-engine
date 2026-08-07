@@ -3,6 +3,7 @@ from scripts.bch_solo_rental_strike_engine import (
     classify_alert_tier,
     recommendation_from_tier,
     determine_canonical_decision,
+    recommendation_from_canonical_decision,
 )
 
 
@@ -168,3 +169,23 @@ def test_strong_rent_downgrades_to_watch_when_probability_is_low():
     )
 
     assert tier == "WATCH_IMPROVING"
+
+def test_recommendation_from_canonical_decision_mapping():
+    assert recommendation_from_canonical_decision("RENT_NOW") == "RENT"
+    assert recommendation_from_canonical_decision("READY") == "RENT"
+    assert (
+        recommendation_from_canonical_decision("WATCH_CLOSELY")
+        == "NEAR STRIKE"
+    )
+    assert recommendation_from_canonical_decision("WATCH") == "WATCH"
+    assert recommendation_from_canonical_decision("WAIT") == "DO NOT RENT"
+    assert recommendation_from_canonical_decision("UNAVAILABLE") == "WAIT"
+
+
+def test_recommendation_from_canonical_decision_rejects_unknown_value():
+    try:
+        recommendation_from_canonical_decision("UNKNOWN")
+    except ValueError as exc:
+        assert "Unsupported canonical decision" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError for unsupported decision.")
