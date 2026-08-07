@@ -326,6 +326,15 @@ def save_config_override(config: dict) -> None:
 
     tmp.replace(CONFIG_OVERRIDE_PATH)
 
+RUN_NOW_TRIGGER_PATH = CONFIG_DIR / "run_now.trigger"
+
+def request_engine_run() -> None:
+    """
+    Request an immediate engine run through the shared config directory.
+    """
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    RUN_NOW_TRIGGER_PATH.touch()
+
 def resolve_setting_value(
     key: str,
     override: dict,
@@ -574,7 +583,7 @@ if auto_refresh:
         key="dashboard_autorefresh",
     )
 
-if st.sidebar.button("Refresh now"):
+if st.sidebar.button("Refresh dashboard"):
     st.cache_data.clear()
     st.rerun()
 
@@ -2095,8 +2104,10 @@ elif page == "Settings":
                 }
             )
 
+            request_engine_run()
+
             st.success(
-                "Settings saved. The engine will use these values after the next scheduled engine run."
+                "Settings saved. An immediate engine run has been requested."
             )
 
     st.divider()
