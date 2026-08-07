@@ -107,3 +107,62 @@ def test_get_storage_health_for_initialized_database(
     assert health.database_size_bytes > 0
     assert health.row_count == 0
     assert health.integrity_ok is True
+
+
+def test_initialize_history_database_adds_canonical_decision_column(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "state" / "history.db"
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            f"""
+            CREATE TABLE {RUN_HISTORY_TABLE} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                opportunity_action TEXT
+            )
+            """
+        )
+        conn.execute(
+            f"""
+            INSERT INTO {RUN_HISTORY_TABLE} (
+                timestamp,
+                opportunity_action
+            )
+            VALUES (?, ?)
+            """,
+            (
+                "2026-08-06T12:00:00Z",
+                "WATCH",
+            ),
+        )
+        conn.commit()
+
+    initialize_history_database(db_path)
+
+    with sqlite3.connect(db_path) as conn:
+        columns = {
+            row[1]
+            for row in conn.execute(
+                f"PRAGMA table_info({RUN_HISTORY_TABLE})"
+            ).fetchall()
+        }
+
+        row = conn.execute(
+            f"""
+            SELECT
+                timestamp,
+                opportunity_action,
+                canonical_decision
+            FROM {RUN_HISTORY_TABLE}
+            """
+        ).fetchone()
+
+    assert "canonical_decision" in columns
+    assert row == (
+        "2026-08-06T12:00:00Z",
+        "WATCH",
+        None,
+    )

@@ -94,6 +94,7 @@ RUN_HISTORY_INSERT_COLUMNS = (
     "market_regime",
     "opportunity_score",
     "opportunity_action",
+    "canonical_decision",
     "budget_min_usd",
     "budget_max_usd",
     "budget_step_usd",

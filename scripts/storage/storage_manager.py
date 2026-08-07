@@ -62,6 +62,7 @@ def initialize_history_database(db_path: Path) -> None:
                 market_regime TEXT,
                 opportunity_score REAL,
                 opportunity_action TEXT,
+                canonical_decision TEXT,
 
                 budget_min_usd REAL,
                 budget_max_usd REAL,
@@ -87,6 +88,7 @@ def initialize_history_database(db_path: Path) -> None:
             "market_regime": "TEXT",
             "opportunity_score": "REAL",
             "opportunity_action": "TEXT",
+            "canonical_decision": "TEXT",
             "budget_min_usd": "REAL",
             "budget_max_usd": "REAL",
             "budget_step_usd": "REAL",

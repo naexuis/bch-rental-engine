@@ -2199,6 +2199,7 @@ def write_history_row(
         "market_regime": market_regime,
         "opportunity_score": opportunity.get("score"),
         "opportunity_action": opportunity.get("action"),
+        "canonical_decision": opportunity.get("canonical_decision"),
 
         "budget_min_usd": BUDGET_MIN_USD,
         "budget_max_usd": BUDGET_MAX_USD,
