@@ -326,6 +326,35 @@ def save_config_override(config: dict) -> None:
 
     tmp.replace(CONFIG_OVERRIDE_PATH)
 
+def resolve_setting_value(
+    key: str,
+    override: dict,
+    state_config: dict,
+    latest: pd.Series,
+    default: int | float,
+) -> int | float:
+    """
+    Resolve one dashboard setting using the configured priority order.
+
+    Priority:
+        1. Dashboard override file
+        2. Latest JSON state config
+        3. Latest history row
+        4. Hardcoded default
+    """
+    if key in override:
+        return override[key]
+
+    if key in state_config:
+        return state_config[key]
+
+    latest_value = latest.get(key)
+
+    if pd.notna(latest_value):
+        return latest_value
+
+    return default
+
 @st.cache_data(ttl=60)
 def load_history() -> pd.DataFrame:
     if not DB_PATH.exists():
@@ -1901,14 +1930,67 @@ elif page == "Settings":
     st.subheader("Settings")
 
     override = load_config_override()
+    state_config = state.get("config", {}) or {}
 
-    current_budget_min = int(override.get("budget_min_usd", latest.get("budget_min_usd", 100)))
-    current_budget_max = int(override.get("budget_max_usd", latest.get("budget_max_usd", 1000)))
-    current_budget_step = int(override.get("budget_step_usd", latest.get("budget_step_usd", 10)))
+    current_budget_min = int(
+        resolve_setting_value(
+            key="budget_min_usd",
+            override=override,
+            state_config=state_config,
+            latest=latest,
+            default=100,
+        )
+    )
 
-    current_hashrate_min = int(override.get("hashrate_min_ph", latest.get("hashrate_min_ph", 300)))
-    current_hashrate_max = int(override.get("hashrate_max_ph", latest.get("hashrate_max_ph", 300)))
-    current_hashrate_step = int(override.get("hashrate_step_ph", latest.get("hashrate_step_ph", 50)))
+    current_budget_max = int(
+        resolve_setting_value(
+            key="budget_max_usd",
+            override=override,
+            state_config=state_config,
+            latest=latest,
+            default=1000,
+        )
+    )
+
+    current_budget_step = int(
+        resolve_setting_value(
+            key="budget_step_usd",
+            override=override,
+            state_config=state_config,
+            latest=latest,
+            default=10,
+        )
+    )
+
+    current_hashrate_min = int(
+        resolve_setting_value(
+            key="hashrate_min_ph",
+            override=override,
+            state_config=state_config,
+            latest=latest,
+            default=300,
+        )
+    )
+
+    current_hashrate_max = int(
+        resolve_setting_value(
+            key="hashrate_max_ph",
+            override=override,
+            state_config=state_config,
+            latest=latest,
+            default=300,
+        )
+    )
+
+    current_hashrate_step = int(
+        resolve_setting_value(
+            key="hashrate_step_ph",
+            override=override,
+            state_config=state_config,
+            latest=latest,
+            default=50,
+        )
+    )
 
     st.markdown("### Engine Budget Controls")
     st.write(
