@@ -159,3 +159,12 @@ def test_canonical_decision_wait():
         )
         == "WAIT"
     )
+
+def test_strong_rent_downgrades_to_watch_when_probability_is_low():
+    tier = classify_alert_tier(
+        fair_value_ratio=1.12,
+        risk_adjusted_roi_pct=12.0,
+        prob_1plus=0.40,
+    )
+
+    assert tier == "WATCH_IMPROVING"

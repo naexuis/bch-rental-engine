@@ -345,19 +345,26 @@ def classify_alert_tier(
     risk_adjusted_roi_pct: float,
     prob_1plus: float,
 ) -> str:
-    if fair_value_ratio >= 1.10 and risk_adjusted_roi_pct >= 10:
-        return "STRONG_RENT"
+    """
+    Return the legacy alert tier derived from the canonical decision.
+    """
+    canonical_decision = determine_canonical_decision(
+        fair_value_ratio=fair_value_ratio,
+        risk_adjusted_roi_pct=risk_adjusted_roi_pct,
+        prob_1plus=prob_1plus,
+        executable=True,
+    )
 
-    if fair_value_ratio >= 1.03 and risk_adjusted_roi_pct > 0:
-        return "DEPLOY_NOW"
+    tier_by_decision = {
+        "RENT_NOW": "STRONG_RENT",
+        "READY": "DEPLOY_NOW",
+        "WATCH_CLOSELY": "NEAR_STRIKE",
+        "WATCH": "WATCH_IMPROVING",
+        "WAIT": "DO_NOT_RENT",
+        "UNAVAILABLE": "DO_NOT_RENT",
+    }
 
-    if fair_value_ratio >= 0.98 and prob_1plus >= 0.50:
-        return "NEAR_STRIKE"
-
-    if fair_value_ratio >= 0.90:
-        return "WATCH_IMPROVING"
-
-    return "DO_NOT_RENT"
+    return tier_by_decision[canonical_decision]
 
 def classify_market_regime(fair_value_ratio: float) -> str:
     if fair_value_ratio >= 1.10:
