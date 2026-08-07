@@ -38,7 +38,8 @@ def test_calculate_opportunity_score_applies_negative_roi_cap():
     )
 
     assert result["score"] == 54.0
-    assert result["action"] == "WEAK_WATCH"
+    assert result["action"] == "WATCH"
+    assert result["canonical_decision"] == "WATCH_CLOSELY"
 
 def test_probability_score_reaches_maximum_at_seventy_percent():
     below_target = calculate_opportunity_score(

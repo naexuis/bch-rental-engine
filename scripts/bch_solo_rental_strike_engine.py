@@ -430,6 +430,7 @@ def calculate_opportunity_score(
     prob_1plus: float,
     risk_adjusted_roi_pct: float,
     market_regime: str,
+    executable: bool = True,
 ) -> Dict[str, Any]:
     fvr_score = max(0, min(65, fair_value_ratio / 1.10 * 65))
     prob_score = max(0, min(20, prob_1plus / 0.70 * 20))
@@ -448,20 +449,21 @@ def calculate_opportunity_score(
     elif risk_adjusted_roi_pct < 0:
         score = min(score, 69.0)
 
-    if score >= 85:
-        action = "STRIKE_NOW"
-    elif score >= 70:
-        action = "STRONG_WATCH"
-    elif score >= 55:
-        action = "WATCH"
-    elif score >= 40:
-        action = "WEAK_WATCH"
-    else:
-        action = "WAIT"
+    canonical_decision = determine_canonical_decision(
+        fair_value_ratio=fair_value_ratio,
+        risk_adjusted_roi_pct=risk_adjusted_roi_pct,
+        prob_1plus=prob_1plus,
+        executable=executable,
+    )
+
+    action = opportunity_action_from_canonical_decision(
+        canonical_decision
+    )
 
     return {
         "score": score,
         "action": action,
+        "canonical_decision": canonical_decision,
         "components": {
             "fvr_score": round(fvr_score, 1),
             "prob_score": round(prob_score, 1),
@@ -499,6 +501,29 @@ def recommendation_from_canonical_decision(
 
     try:
         return recommendation_by_decision[canonical_decision]
+    except KeyError as exc:
+        raise ValueError(
+            f"Unsupported canonical decision: {canonical_decision!r}"
+        ) from exc
+
+def opportunity_action_from_canonical_decision(
+    canonical_decision: str,
+) -> str:
+    """
+    Return the legacy Opportunity Action derived from the
+    canonical decision.
+    """
+    action_by_decision = {
+        "RENT_NOW": "STRIKE_NOW",
+        "READY": "STRONG_WATCH",
+        "WATCH_CLOSELY": "WATCH",
+        "WATCH": "WEAK_WATCH",
+        "WAIT": "WAIT",
+        "UNAVAILABLE": "WAIT",
+    }
+
+    try:
+        return action_by_decision[canonical_decision]
     except KeyError as exc:
         raise ValueError(
             f"Unsupported canonical decision: {canonical_decision!r}"

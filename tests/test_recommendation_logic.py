@@ -4,6 +4,7 @@ from scripts.bch_solo_rental_strike_engine import (
     recommendation_from_tier,
     determine_canonical_decision,
     recommendation_from_canonical_decision,
+    opportunity_action_from_canonical_decision,
 )
 
 
@@ -185,6 +186,38 @@ def test_recommendation_from_canonical_decision_mapping():
 def test_recommendation_from_canonical_decision_rejects_unknown_value():
     try:
         recommendation_from_canonical_decision("UNKNOWN")
+    except ValueError as exc:
+        assert "Unsupported canonical decision" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError for unsupported decision.")
+
+def test_opportunity_action_from_canonical_decision_mapping():
+    assert (
+        opportunity_action_from_canonical_decision("RENT_NOW")
+        == "STRIKE_NOW"
+    )
+    assert (
+        opportunity_action_from_canonical_decision("READY")
+        == "STRONG_WATCH"
+    )
+    assert (
+        opportunity_action_from_canonical_decision("WATCH_CLOSELY")
+        == "WATCH"
+    )
+    assert (
+        opportunity_action_from_canonical_decision("WATCH")
+        == "WEAK_WATCH"
+    )
+    assert opportunity_action_from_canonical_decision("WAIT") == "WAIT"
+    assert (
+        opportunity_action_from_canonical_decision("UNAVAILABLE")
+        == "WAIT"
+    )
+
+
+def test_opportunity_action_from_canonical_decision_rejects_unknown_value():
+    try:
+        opportunity_action_from_canonical_decision("UNKNOWN")
     except ValueError as exc:
         assert "Unsupported canonical decision" in str(exc)
     else:
