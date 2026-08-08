@@ -71,3 +71,20 @@ def fmt_hashrate_from_ph(value_ph):
 
     value_mh = value_gh * 1_000
     return f"{value_mh:,.2f} MH/s"
+
+def fmt_large_number(value):
+    value = safe_num(value)
+
+    if abs(value) >= 1_000_000_000_000:
+        return f"{value/1_000_000_000_000:.2f} T"
+
+    if abs(value) >= 1_000_000_000:
+        return f"{value/1_000_000_000:.2f} B"
+
+    if abs(value) >= 1_000_000:
+        return f"{value/1_000_000:.2f} M"
+
+    if abs(value) >= 1_000:
+        return f"{value/1_000:.2f} K"
+
+    return f"{value:,.0f}"
