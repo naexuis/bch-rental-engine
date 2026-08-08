@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pandas as pd
-import plotly.express as px
 import streamlit as st
 
 from dashboard.ui_utils import (
@@ -10,6 +9,9 @@ from dashboard.ui_utils import (
 )
 from dashboard.frontier_data import (
     build_frontier_dataframe,
+)
+from dashboard.charts.frontier import (
+    build_frontier_probability_chart,
 )
 
 
@@ -97,23 +99,8 @@ def render_alternative_strike_plans(
             chart_df["prob_1plus_pct"].round(2)
         )
 
-        fig = px.line(
-            chart_df,
-            x="budget_usd",
-            y="prob_1plus_pct",
-            markers=True,
-            labels={
-                "budget_usd": "Budget USD",
-                "prob_1plus_pct": "P(1+ Block) %",
-            },
-        )
-
-        fig.update_traces(
-            hovertemplate=(
-                "Budget: $%{x:,.0f}<br>"
-                "P(1+): %{y:.2f}%"
-                "<extra></extra>"
-            )
+        fig = build_frontier_probability_chart(
+            chart_df
         )
 
         st.plotly_chart(
