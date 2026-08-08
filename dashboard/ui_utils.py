@@ -88,3 +88,16 @@ def fmt_large_number(value):
         return f"{value/1_000:.2f} K"
 
     return f"{value:,.0f}"
+
+def progress_pct(
+    value: float,
+    max_value: float = 100.0,
+) -> int:
+    value = safe_num(value)
+    max_value = safe_num(max_value, 100.0)
+
+    if max_value <= 0:
+        return 0
+
+    pct = int(round((value / max_value) * 100))
+    return max(0, min(100, pct))
