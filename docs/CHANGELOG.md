@@ -29,22 +29,19 @@ Earlier `v1.x` and `v2.x` releases documented later in this file represent the p
 
 # [Unreleased]
 
+No unreleased changes are currently recorded.
+
+---
+
+# [v0.2.0] - 2026-08-09
+
 ## Overview
 
-Development is currently focused on completing **Version 0.2 — Storage & Reliability**.
+Version 0.2 — Storage & Reliability is the production-validated release of the managed storage, configuration, and modular dashboard architecture.
 
 Version 0.2 transforms the persistence subsystem from basic SQLite history storage into a managed, validated, versioned, and operator-visible storage architecture suitable for long-term production operation.
 
-Feature development for the Version 0.2 milestone is substantially complete.
-
-Current work is focused on:
-
-- Release hardening
-- Documentation
-- Runtime validation
-- Docker validation
-- Umbrel production validation
-- Final release tagging
+The release was validated on the production Umbrel deployment on August 9, 2026. The production database migrated successfully from schema version 0 to schema version 1 while preserving existing Recommendation History, and normal engine writes continued after migration.
 
 ---
 
@@ -592,10 +589,10 @@ rather than containing all presentation and business logic directly.
 The automated regression suite has expanded to:
 
 ```text
-251 tests
+259 tests
 ```
 
-with the full suite currently passing during Version 0.2 release hardening.
+with the full suite passing before the Version 0.2 production release.
 
 ---
 
@@ -644,29 +641,28 @@ Documentation now reflects:
 
 ---
 
-## Remaining Before v0.2.0
+## Production Validation
 
-The Version 0.2 feature implementation is substantially complete.
+Version 0.2.0 was validated on the production Umbrel installation on August 9, 2026.
 
-Remaining release tasks include:
+Validation included:
 
-- [ ] Final README review
-- [ ] Final documentation consistency review
-- [ ] Compile all production Python modules
-- [ ] Run final full regression suite
-- [ ] Local runtime validation
-- [ ] Database migration runtime validation
-- [ ] Retention runtime validation
-- [ ] Dashboard Storage page QA
-- [ ] Dashboard Settings page QA
-- [ ] Docker engine build validation
-- [ ] Docker dashboard build validation
-- [ ] Umbrel deployment validation
-- [ ] Production storage-health verification
-- [ ] Production Recommendation History verification
-- [ ] Final version update
-- [ ] Release notes
-- [ ] Git release tag
+- Production SQLite migration from schema version 0 to schema version 1
+- Preservation of all 790 pre-upgrade Recommendation History rows
+- Continued successful Recommendation History writes after migration
+- SQLite `PRAGMA integrity_check` returning `ok`
+- Verification of all required Version 0.2 history columns
+- Storage dashboard health and utilization verification
+- Successful manual SQLite `VACUUM` through the Storage dashboard
+- Successful Settings dashboard persistence to `dashboard_config_override.json`
+- Verification of the 1 GiB history-retention override (`1073741824` bytes)
+- Successful post-migration engine execution
+- Successful dashboard startup with no runtime exception
+- Production engine and dashboard containers running `ghcr.io/naexuis/bch-rental-engine:0.2.0`
+- Final production image resolving to GHCR digest `sha256:66937fd74f760bb9edf6a99e0f2a28a9e88822e8bb19d767b9d3ffac6b004c76`
+- Verification that the final `0.2.0` deployment uses the exact registry artifact previously validated as the release candidate
+
+The final production verification observed 796 Recommendation History rows, confirming that history continued to accumulate normally after migration and dashboard write-path testing.
 
 ---
 
@@ -1131,7 +1127,7 @@ Initial production-oriented release of the BCH Rental Engine.
 
 | Version | Status | Description |
 |---------|--------|-------------|
-| v0.2.x | Release Hardening | Storage & Reliability |
+| v0.2.x | Production Validated | Storage & Reliability |
 | v0.1.x | Complete | Foundation |
 
 ## Planned Release Line
@@ -1166,7 +1162,7 @@ Initial production-oriented release of the BCH Rental Engine.
 Current status:
 
 ```text
-RELEASE HARDENING
+PRODUCTION VALIDATED
 ```
 
 Primary capabilities:

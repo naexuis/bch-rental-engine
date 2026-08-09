@@ -786,14 +786,14 @@ Store release artifacts and metadata.
 
 ---
 
-# Current Development Focus
+# Current Release Status
 
 ## Version 0.2 — Storage & Reliability
 
 Status:
 
 ```text
-Release Hardening
+Production Validated
 ```
 
 ### Completed
@@ -822,23 +822,23 @@ Release Hardening
 - ✅ Modular dashboard page architecture
 - ✅ Expanded storage and dashboard regression tests
 
-### Remaining Before Version 0.2 Release
+### Remaining Release Closeout
 
-- [ ] Final documentation review
-- [ ] CHANGELOG update
-- [ ] ROADMAP update
-- [ ] ARCHITECTURE update
-- [ ] OPERATIONS update
-- [ ] README review/update
-- [ ] Final compile verification
-- [ ] Full regression verification
-- [ ] Local runtime validation
-- [ ] Docker build verification
-- [ ] Umbrel deployment validation
-- [ ] Production storage verification
-- [ ] Release version update
-- [ ] Release notes
-- [ ] Release tag
+- [x] Final documentation review
+- [x] CHANGELOG update
+- [x] ROADMAP update
+- [x] ARCHITECTURE review/update
+- [x] OPERATIONS review — no release change required
+- [x] README review/update
+- [x] Final post-documentation compile verification
+- [x] Final post-documentation full regression verification
+- [x] Local runtime validation
+- [x] Docker image build and runtime verification
+- [x] Umbrel production deployment validation
+- [x] Production storage and history verification
+- [x] Release version promoted to v0.2.0
+- [x] Release notes prepared
+- [ ] Create and push Git tag `v0.2.0`
 
 ---
 

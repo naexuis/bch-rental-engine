@@ -1599,10 +1599,10 @@ Current regression coverage includes:
 - Launcher behavior
 - Path behavior
 
-At the completion of the current Storage & Reliability development work, the full suite contains:
+At the completion of the Version 0.2 Storage & Reliability development work, the full suite contains:
 
 ```text
-251 automated tests
+259 automated tests
 ```
 
 The test count is not itself the objective.
@@ -1815,7 +1815,7 @@ The current architecture includes:
 - ✅ Native Umbrel deployment
 - ✅ Expanded automated regression suite
 
-Current architecture is considered stable for the Version 0.2 Storage & Reliability release-hardening phase.
+The Version 0.2 Storage & Reliability architecture has been production validated.
 
 ---
 

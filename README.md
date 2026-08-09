@@ -1273,7 +1273,7 @@ Established:
 
 ## v0.2 — Storage & Reliability
 
-**Status:** Release Hardening
+**Status:** Production Validated
 
 Adds:
 

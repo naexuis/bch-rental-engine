@@ -641,33 +641,32 @@ New or expanded coverage includes:
 
 ---
 
-## Version 0.2 Remaining Release Work
+## Version 0.2 Release Closeout
 
-The feature implementation is complete.
+The Version 0.2 feature implementation and production validation are complete.
 
-Remaining release-hardening tasks:
+Completed release validation:
 
-- [ ] Final README review/update
-- [ ] Final CHANGELOG update
-- [ ] Final ROADMAP update
-- [ ] Final ARCHITECTURE review
-- [ ] Final CONFIGURATION review
-- [ ] Final OPERATIONS review
-- [ ] Final RELEASE_CHECKLIST review
-- [ ] Compile all production Python modules
-- [ ] Run full regression suite
-- [ ] Local runtime validation
-- [ ] Storage migration runtime validation
-- [ ] Storage retention runtime validation
-- [ ] Dashboard Storage page QA
-- [ ] Dashboard Settings page QA
-- [ ] Docker engine build
-- [ ] Docker dashboard build
-- [ ] Umbrel deployment validation
-- [ ] Production storage verification
-- [ ] Production history verification
-- [ ] Version update
-- [ ] Release notes
+- [x] Final README review/update
+- [x] Final CHANGELOG review
+- [x] Final ROADMAP review
+- [x] Final ARCHITECTURE review
+- [x] Final CONFIGURATION review
+- [x] Final OPERATIONS review
+- [x] Final RELEASE_CHECKLIST review
+- [x] Compile all production Python modules
+- [x] Run full regression suite
+- [x] Local runtime validation
+- [x] Storage migration runtime validation
+- [x] Storage retention/runtime configuration validation
+- [x] Dashboard Storage page QA
+- [x] Dashboard Settings page QA
+- [x] Docker image build and runtime validation
+- [x] Umbrel deployment validation
+- [x] Production storage verification
+- [x] Production history preservation and write verification
+- [x] Version updated to v0.2.0
+- [x] Release notes prepared
 - [ ] Git release tag
 
 ---
@@ -1294,7 +1293,7 @@ COMPLETE
 
 Version 0.2
 Storage & Reliability
-RELEASE HARDENING
+PRODUCTION VALIDATED
 
         ↓
 

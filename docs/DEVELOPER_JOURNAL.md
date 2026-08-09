@@ -1416,3 +1416,31 @@ Git history records individual changes.
 This journal explains why those changes were made and how the project’s philosophy evolved.
 
 If the BCH Rental Engine is revisited years from now, these notes should provide enough context to understand not only the implementation, but also the reasoning, trade-offs, mistakes, and lessons that shaped the platform.
+
+⸻
+
+Version 0.2.0 Production Validation — August 9, 2026
+
+Version 0.2.0 completed the Storage & Reliability milestone and was validated on the production Umbrel installation.
+
+Production validation confirmed:
+
+* The existing SQLite Recommendation History database migrated from schema version 0 to schema version 1.
+* All 790 pre-upgrade history rows were preserved.
+* New Recommendation History rows continued to be written after migration.
+* The final production verification observed 796 history rows.
+* SQLite PRAGMA integrity_check returned ok.
+* The required Version 0.2 history columns were present after migration.
+* The Storage dashboard reported healthy production storage.
+* Manual database compaction through the Storage page completed successfully.
+* The Settings page successfully persisted dashboard_config_override.json.
+* The production history retention override was verified at 1073741824 bytes (1 GiB).
+* The engine completed normal post-migration execution.
+* The dashboard started successfully without a runtime exception.
+* Engine and dashboard containers were running ghcr.io/naexuis/bch-rental-engine:0.2.0.
+* The final image resolved to GHCR digest sha256:66937fd74f760bb9edf6a99e0f2a28a9e88822e8bb19d767b9d3ffac6b004c76.
+* The final 0.2.0 deployment used the same registry artifact previously validated as the release candidate.
+
+The production migration demonstrated that the Version 0.2 storage architecture could upgrade the existing historical database in place without destroying Recommendation History.
+
+The verified pre-upgrade rollback database remains preserved separately and should not be overwritten or deleted.
