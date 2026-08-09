@@ -267,3 +267,38 @@ def get_history_statistics(
             db_path
         ),
     }
+
+def prune_oldest_history_rows(
+    db_path: Path,
+    *,
+    row_count: int,
+) -> int:
+    """
+    Delete up to row_count oldest history records.
+
+    Returns the number of rows deleted.
+    """
+    if row_count <= 0:
+        return 0
+
+    initialize_history_database(db_path)
+
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.execute(
+            """
+            DELETE FROM run_history
+            WHERE id IN (
+                SELECT id
+                FROM run_history
+                ORDER BY id ASC
+                LIMIT ?
+            )
+            """,
+            (row_count,),
+        )
+
+        conn.commit()
+
+        deleted_count = cursor.rowcount
+
+    return max(0, int(deleted_count))
