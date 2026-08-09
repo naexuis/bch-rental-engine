@@ -236,9 +236,11 @@ def get_history_statistics(
 ) -> dict[str, Any]:
     """
     Return basic execution-history statistics.
-    """
-    initialize_history_database(db_path)
 
+    This function is read-only and does not initialize or migrate the
+    database. Schema initialization and migration are owned by engine
+    startup.
+    """
     with sqlite3.connect(db_path) as conn:
         row = conn.execute(
             """

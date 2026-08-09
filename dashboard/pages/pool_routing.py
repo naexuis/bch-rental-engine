@@ -19,19 +19,20 @@ def render_pool_routing_page(
     state: dict,
 ) -> None:
     st.subheader("Pool Routing")
+
+    opportunity = state.get("opportunity") or {}
+    action = opportunity.get("action", "WAIT")
+
     render_decision_status(action)
 
-    state_path = STATE_PATH
-
-    if not state_path.exists():
-        st.warning("Latest engine state file not found yet.")
-        st.stop()
-
-    with state_path.open("r", encoding="utf-8") as f:
-        state = json.load(f)
-
     recommended_pool = state.get("recommended_pool")
-    rankings = state.get("pool_routing", {}).get("rankings", [])
+    rankings = state.get(
+        "pool_routing",
+        {},
+    ).get(
+        "rankings",
+        [],
+    )
 
     if not recommended_pool:
         st.warning("No pool routing data available yet.")

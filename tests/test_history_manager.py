@@ -273,3 +273,58 @@ def test_enforce_history_size_limit_prunes_when_over_limit(
     assert result["size_before_bytes"] == size_before
     assert result["size_after_bytes"] <= size_before
     assert stats["record_count"] < 10
+
+def test_get_history_statistics_does_not_migrate_legacy_database(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "state" / "legacy_history.db"
+    db_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            f"""
+            CREATE TABLE {RUN_HISTORY_TABLE} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL
+            )
+            """
+        )
+
+        conn.executemany(
+            f"""
+            INSERT INTO {RUN_HISTORY_TABLE} (
+                timestamp
+            )
+            VALUES (?)
+            """,
+            [
+                ("2026-08-08T10:00:00Z",),
+                ("2026-08-08T11:00:00Z",),
+                ("2026-08-08T12:00:00Z",),
+            ],
+        )
+
+        conn.execute(
+            "PRAGMA user_version = 0"
+        )
+
+        conn.commit()
+
+    stats = get_history_statistics(
+        db_path,
+    )
+
+    with sqlite3.connect(db_path) as conn:
+        version_after = conn.execute(
+            "PRAGMA user_version"
+        ).fetchone()[0]
+
+    assert stats["record_count"] == 3
+    assert stats["oldest_timestamp"] == "2026-08-08T10:00:00Z"
+    assert stats["newest_timestamp"] == "2026-08-08T12:00:00Z"
+
+    # Statistics retrieval must remain read-only.
+    assert version_after == 0
