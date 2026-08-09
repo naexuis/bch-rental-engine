@@ -21,6 +21,7 @@ from statistics import mean, pstdev
 from scripts.storage.storage_manager import (
     get_storage_health,
     initialize_history_database,
+    validate_storage_startup,
 )
 
 from scripts.storage.history_manager import (
@@ -2978,6 +2979,9 @@ def run_engine() -> Dict[str, Any]:
 
 def main() -> None:
     try:
+        validate_storage_startup(
+            HISTORY_DB_PATH,
+        )
         result = run_engine()
         best = result["winners"]["best_strike"]
 

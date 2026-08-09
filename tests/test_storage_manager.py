@@ -13,6 +13,7 @@ from scripts.storage.storage_manager import (
     get_storage_health,
     CURRENT_SCHEMA_VERSION,
     apply_schema_migrations,
+    validate_storage_startup,
 )
 
 
@@ -372,3 +373,37 @@ def test_apply_schema_migrations_leaves_current_version_unchanged(
         ).fetchone()[0]
 
     assert user_version == CURRENT_SCHEMA_VERSION
+
+def test_validate_storage_startup_initializes_and_validates_database(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "state" / "history.db"
+
+    health = validate_storage_startup(
+        db_path,
+    )
+
+    assert db_path.exists() is True
+    assert health.database_exists is True
+    assert health.integrity_ok is True
+    assert health.row_count == 0
+    assert health.database_size_bytes > 0
+
+def test_validate_storage_startup_rejects_failed_integrity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    db_path = tmp_path / "state" / "history.db"
+
+    monkeypatch.setattr(
+        "scripts.storage.storage_manager.check_database_integrity",
+        lambda path: False,
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="database integrity check did not pass",
+    ):
+        validate_storage_startup(
+            db_path,
+        )

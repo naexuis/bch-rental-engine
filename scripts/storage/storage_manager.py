@@ -238,3 +238,28 @@ def get_storage_health(
         row_count=get_database_row_count(db_path),
         integrity_ok=check_database_integrity(db_path),
     )
+
+def validate_storage_startup(
+    db_path: Path,
+) -> StorageHealth:
+    """
+    Initialize the history database and validate storage health at startup.
+
+    Raises:
+        RuntimeError: If the database integrity check fails.
+    """
+    initialize_history_database(
+        db_path,
+    )
+
+    health = get_storage_health(
+        db_path,
+    )
+
+    if not health.integrity_ok:
+        raise RuntimeError(
+            "Storage startup validation failed: "
+            "database integrity check did not pass."
+        )
+
+    return health
