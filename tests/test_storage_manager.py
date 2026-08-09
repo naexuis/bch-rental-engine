@@ -220,3 +220,77 @@ def test_initialize_history_database_rejects_future_schema_version(
         ).fetchone()[0]
 
     assert user_version == CURRENT_SCHEMA_VERSION + 1
+
+def test_initialize_history_database_upgrades_version_zero_and_preserves_rows(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "state" / "history.db"
+    db_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            f"""
+            CREATE TABLE {RUN_HISTORY_TABLE} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                opportunity_action TEXT
+            )
+            """
+        )
+
+        conn.execute(
+            f"""
+            INSERT INTO {RUN_HISTORY_TABLE} (
+                timestamp,
+                opportunity_action
+            )
+            VALUES (?, ?)
+            """,
+            (
+                "2026-08-08T12:00:00Z",
+                "WATCH",
+            ),
+        )
+
+        # Legacy databases predate explicit schema versioning.
+        conn.execute("PRAGMA user_version = 0")
+        conn.commit()
+
+    initialize_history_database(db_path)
+
+    with sqlite3.connect(db_path) as conn:
+        user_version = conn.execute(
+            "PRAGMA user_version"
+        ).fetchone()[0]
+
+        columns = {
+            row[1]
+            for row in conn.execute(
+                f"PRAGMA table_info({RUN_HISTORY_TABLE})"
+            ).fetchall()
+        }
+
+        row = conn.execute(
+            f"""
+            SELECT
+                timestamp,
+                opportunity_action,
+                canonical_decision
+            FROM {RUN_HISTORY_TABLE}
+            """
+        ).fetchone()
+
+    assert user_version == CURRENT_SCHEMA_VERSION
+
+    assert "canonical_decision" in columns
+    assert "market_regime" in columns
+    assert "opportunity_score" in columns
+
+    assert row == (
+        "2026-08-08T12:00:00Z",
+        "WATCH",
+        None,
+    )
