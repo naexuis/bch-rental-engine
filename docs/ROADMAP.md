@@ -16,13 +16,13 @@ The objective is to explain them.
 
 # Current Version
 
-**Version:** v0.2.x
+**Version:** v0.3.x
 
-**Status:** Release Hardening
+**Status:** Development
 
 **Platform:** Native Umbrel Application
 
-**Current Milestone:** Storage & Reliability
+**Current Milestone:** System Intelligence
 
 ---
 
@@ -227,23 +227,15 @@ Build a reliable BCH rental decision engine capable of evaluating live rental op
 
 ---
 
-# Version 0.2 — Storage & Reliability 🚧
+# Version 0.2 — Storage & Reliability ✅
 
-**Status:** Release Hardening
+**Status:** Production Validated
 
 ## Objective
 
 Transform the persistence layer into a production-grade storage architecture capable of running safely for long periods while preserving Recommendation History and preventing uncontrolled storage growth.
 
-The Version 0.2 implementation is functionally complete.
-
-Remaining work is focused on:
-
-- Final documentation
-- Runtime validation
-- Container validation
-- Umbrel deployment validation
-- Release tagging
+Version 0.2.0 completed the Storage & Reliability milestone and was production validated on August 9, 2026.
 
 ---
 
@@ -616,7 +608,7 @@ The Version 0.2 development cycle significantly expanded regression coverage.
 Current full suite:
 
 ```text
-251 automated tests
+259 automated tests
 ```
 
 New or expanded coverage includes:
@@ -667,13 +659,13 @@ Completed release validation:
 - [x] Production history preservation and write verification
 - [x] Version updated to v0.2.0
 - [x] Release notes prepared
-- [ ] Git release tag
+- [x] Git release tag
 
 ---
 
 # Version 0.3 — System Intelligence
 
-**Status:** Next Development Milestone
+**Status:** Development
 
 ## Objective
 
@@ -1299,7 +1291,7 @@ PRODUCTION VALIDATED
 
 Version 0.3
 System Intelligence
-NEXT
+IN DEVELOPMENT
 
         ↓
 
