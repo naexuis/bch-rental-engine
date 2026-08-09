@@ -7,6 +7,7 @@ from typing import Any
 from scripts.storage.storage_manager import (
     get_database_size_bytes,
     initialize_history_database,
+    vacuum_database,
 )
 
 
@@ -302,3 +303,70 @@ def prune_oldest_history_rows(
         deleted_count = cursor.rowcount
 
     return max(0, int(deleted_count))
+
+def enforce_history_size_limit(
+    db_path: Path,
+    *,
+    max_size_bytes: int,
+) -> dict[str, Any]:
+    """
+    Enforce the configured maximum history database size.
+
+    Oldest history rows are removed in batches until the database is
+    within the configured size limit or no history rows remain.
+    """
+    initialize_history_database(db_path)
+
+    size_before = get_database_size_bytes(db_path)
+
+    if size_before <= max_size_bytes:
+        return {
+            "pruned": False,
+            "rows_deleted": 0,
+            "size_before_bytes": size_before,
+            "size_after_bytes": size_before,
+        }
+
+    total_deleted = 0
+
+    while True:
+        stats = get_history_statistics(db_path)
+        record_count = int(stats["record_count"])
+
+        if record_count <= 0:
+            break
+
+        batch_size = max(
+            1,
+            record_count // 10,
+        )
+
+        deleted = prune_oldest_history_rows(
+            db_path,
+            row_count=batch_size,
+        )
+
+        if deleted <= 0:
+            break
+
+        total_deleted += deleted
+
+        vacuum_database(db_path)
+
+        current_size = get_database_size_bytes(
+            db_path
+        )
+
+        if current_size <= max_size_bytes:
+            break
+
+    size_after = get_database_size_bytes(
+        db_path
+    )
+
+    return {
+        "pruned": total_deleted > 0,
+        "rows_deleted": total_deleted,
+        "size_before_bytes": size_before,
+        "size_after_bytes": size_after,
+    }
