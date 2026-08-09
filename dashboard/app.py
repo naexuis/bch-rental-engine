@@ -70,6 +70,9 @@ from dashboard.settings_service import (
 from dashboard.pages.settings import (
     render_settings_page,
 )
+from dashboard.pages.storage import (
+    render_storage_page,
+)
 
 
 st.set_page_config(
@@ -134,6 +137,7 @@ page = st.sidebar.radio(
         "Strike Analysis",
         "Pool Routing",
         "History",
+        "Storage",
         "Settings",
     ],
     key="main_navigation",
@@ -243,6 +247,12 @@ elif page == "Pool Routing":
 elif page == "History":
     render_history_page(
         db_path=DB_PATH,
+    )
+
+elif page == "Storage":
+    render_storage_page(
+        db_path=DB_PATH,
+        config_override_path=CONFIG_OVERRIDE_PATH,
     )
 
 elif page == "Settings":
