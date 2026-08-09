@@ -61,6 +61,15 @@ from dashboard.history_data import (
 from dashboard.pages.history import (
     render_history_page,
 )
+from dashboard.settings_service import (
+    load_config_override,
+    request_engine_run,
+    resolve_setting_value,
+    save_config_override,
+)
+from dashboard.pages.settings import (
+    render_settings_page,
+)
 
 
 st.set_page_config(
@@ -76,66 +85,6 @@ DB_PATH = STATE_DIR / "bch_rental_history.sqlite"
 STATE_PATH = STATE_DIR / "bch_solo_rental_strike_engine.json"
 CONFIG_OVERRIDE_PATH = CONFIG_DIR / "dashboard_config_override.json"
 
-
-def load_config_override() -> dict:
-    if not CONFIG_OVERRIDE_PATH.exists():
-        return {}
-
-    try:
-        import json
-        with CONFIG_OVERRIDE_PATH.open("r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
-
-
-def save_config_override(config: dict) -> None:
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-
-    tmp = CONFIG_OVERRIDE_PATH.with_suffix(".tmp")
-    with tmp.open("w", encoding="utf-8") as f:
-        import json
-        json.dump(config, f, indent=2, sort_keys=True)
-
-    tmp.replace(CONFIG_OVERRIDE_PATH)
-
-RUN_NOW_TRIGGER_PATH = CONFIG_DIR / "run_now.trigger"
-
-def request_engine_run() -> None:
-    """
-    Request an immediate engine run through the shared config directory.
-    """
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    RUN_NOW_TRIGGER_PATH.touch()
-
-def resolve_setting_value(
-    key: str,
-    override: dict,
-    state_config: dict,
-    latest: pd.Series,
-    default: int | float,
-) -> int | float:
-    """
-    Resolve one dashboard setting using the configured priority order.
-
-    Priority:
-        1. Dashboard override file
-        2. Latest JSON state config
-        3. Latest history row
-        4. Hardcoded default
-    """
-    if key in override:
-        return override[key]
-
-    if key in state_config:
-        return state_config[key]
-
-    latest_value = latest.get(key)
-
-    if pd.notna(latest_value):
-        return latest_value
-
-    return default
 
 @st.cache_data(ttl=60)
 def load_history() -> pd.DataFrame:
@@ -297,182 +246,9 @@ elif page == "History":
     )
 
 elif page == "Settings":
-    st.subheader("Settings")
-
-    override = load_config_override()
-    state_config = state.get("config", {}) or {}
-
-    current_budget_min = int(
-        resolve_setting_value(
-            key="budget_min_usd",
-            override=override,
-            state_config=state_config,
-            latest=latest,
-            default=100,
-        )
+    render_settings_page(
+        state=state,
+        latest=latest,
+        config_dir=CONFIG_DIR,
+        config_override_path=CONFIG_OVERRIDE_PATH,
     )
-
-    current_budget_max = int(
-        resolve_setting_value(
-            key="budget_max_usd",
-            override=override,
-            state_config=state_config,
-            latest=latest,
-            default=1000,
-        )
-    )
-
-    current_budget_step = int(
-        resolve_setting_value(
-            key="budget_step_usd",
-            override=override,
-            state_config=state_config,
-            latest=latest,
-            default=10,
-        )
-    )
-
-    current_hashrate_min = int(
-        resolve_setting_value(
-            key="hashrate_min_ph",
-            override=override,
-            state_config=state_config,
-            latest=latest,
-            default=300,
-        )
-    )
-
-    current_hashrate_max = int(
-        resolve_setting_value(
-            key="hashrate_max_ph",
-            override=override,
-            state_config=state_config,
-            latest=latest,
-            default=300,
-        )
-    )
-
-    current_hashrate_step = int(
-        resolve_setting_value(
-            key="hashrate_step_ph",
-            override=override,
-            state_config=state_config,
-            latest=latest,
-            default=50,
-        )
-    )
-
-    st.markdown("### Engine Budget Controls")
-    st.write(
-        "Use these settings to control the budget range the engine evaluates. "
-        "Changes are saved to the dashboard override file and will apply on the next engine run."
-    )
-
-    s1, s2, s3 = st.columns(3)
-    s1.metric("Current Min", f"${current_budget_min:,.0f}")
-    s2.metric("Current Max", f"${current_budget_max:,.0f}")
-    s3.metric("Current Step", f"${current_budget_step:,.0f}")
-
-    h1, h2, h3 = st.columns(3)
-    h1.metric("Hashrate Min", f"{current_hashrate_min:,.0f} PH/s")
-    h2.metric("Hashrate Max", f"{current_hashrate_max:,.0f} PH/s")
-    h3.metric("Hashrate Step", f"{current_hashrate_step:,.0f} PH/s")
-
-    st.divider()
-
-    with st.form("settings_form"):
-        st.markdown("### Edit Budget Range")
-
-        budget_min = st.number_input(
-            "Budget Min USD",
-            min_value=1,
-            max_value=100000,
-            value=current_budget_min,
-            step=10,
-        )
-
-        budget_max = st.number_input(
-            "Budget Max USD",
-            min_value=1,
-            max_value=100000,
-            value=current_budget_max,
-            step=10,
-        )
-
-        budget_step = st.number_input(
-            "Budget Step USD",
-            min_value=1,
-            max_value=10000,
-            value=current_budget_step,
-            step=1,
-        )
-
-        st.markdown("### Edit Hashrate Range")
-
-        hashrate_min = st.number_input(
-            "Hashrate Min PH/s",
-            min_value=1,
-            max_value=100000,
-            value=current_hashrate_min,
-            step=10,
-        )
-
-        hashrate_max = st.number_input(
-            "Hashrate Max PH/s",
-            min_value=1,
-            max_value=100000,
-            value=current_hashrate_max,
-            step=10,
-        )
-
-        hashrate_step = st.number_input(
-            "Hashrate Step PH/s",
-            min_value=1,
-            max_value=10000,
-            value=current_hashrate_step,
-            step=10,
-        )
-
-        submitted = st.form_submit_button("Save Settings")
-
-    if submitted:
-        errors = []
-
-        if budget_min >= budget_max:
-            errors.append("Budget Min must be less than Budget Max.")
-
-        if budget_step > (budget_max - budget_min):
-            errors.append("Budget Step should be smaller than the total budget range.")
-
-        if hashrate_min > hashrate_max:
-            errors.append("Hashrate Min must be less than or equal to Hashrate Max.")
-
-        if hashrate_step > (hashrate_max - hashrate_min) and hashrate_min != hashrate_max:
-            errors.append("Hashrate Step should be smaller than the total hashrate range.")
-
-        if errors:
-            for error in errors:
-                st.error(error)
-        else:
-            save_config_override(
-                {
-                    "budget_min_usd": int(budget_min),
-                    "budget_max_usd": int(budget_max),
-                    "budget_step_usd": int(budget_step),
-                    "hashrate_min_ph": int(hashrate_min),
-                    "hashrate_max_ph": int(hashrate_max),
-                    "hashrate_step_ph": int(hashrate_step),
-                }
-            )
-
-            request_engine_run()
-
-            st.success(
-                "Settings saved. An immediate engine run has been requested."
-            )
-
-    st.divider()
-
-    st.markdown("### Current Override File")
-    st.caption("This is the exact JSON file currently being used by the engine override system.")
-    st.json(load_config_override())
