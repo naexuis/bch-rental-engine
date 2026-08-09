@@ -21,6 +21,44 @@ class StorageHealth:
     integrity_ok: bool
 
 
+def migrate_schema_v0_to_v1(
+    conn: sqlite3.Connection,
+) -> None:
+    """
+    Upgrade a legacy version-0 history database to schema version 1.
+
+    Existing history rows are preserved while missing version-1 columns
+    are added.
+    """
+    existing_columns = {
+        row[1]
+        for row in conn.execute(
+            f"PRAGMA table_info({RUN_HISTORY_TABLE})"
+        ).fetchall()
+    }
+
+    required_columns = {
+        "market_regime": "TEXT",
+        "opportunity_score": "REAL",
+        "opportunity_action": "TEXT",
+        "canonical_decision": "TEXT",
+        "budget_min_usd": "REAL",
+        "budget_max_usd": "REAL",
+        "budget_step_usd": "REAL",
+    }
+
+    for column_name, column_type in required_columns.items():
+        if column_name not in existing_columns:
+            conn.execute(
+                f"""
+                ALTER TABLE {RUN_HISTORY_TABLE}
+                ADD COLUMN {column_name} {column_type}
+                """
+            )
+
+    conn.execute("PRAGMA user_version = 1")
+
+
 def initialize_history_database(db_path: Path) -> None:
     """
     Create the history database and apply all currently supported schema
@@ -88,35 +126,8 @@ def initialize_history_database(db_path: Path) -> None:
             """
         )
 
-        existing_columns = {
-            row[1]
-            for row in conn.execute(
-                f"PRAGMA table_info({RUN_HISTORY_TABLE})"
-            ).fetchall()
-        }
-
-        migrations = {
-            "market_regime": "TEXT",
-            "opportunity_score": "REAL",
-            "opportunity_action": "TEXT",
-            "canonical_decision": "TEXT",
-            "budget_min_usd": "REAL",
-            "budget_max_usd": "REAL",
-            "budget_step_usd": "REAL",
-        }
-
-        for column_name, column_type in migrations.items():
-            if column_name not in existing_columns:
-                conn.execute(
-                    f"""
-                    ALTER TABLE {RUN_HISTORY_TABLE}
-                    ADD COLUMN {column_name} {column_type}
-                    """
-                )
-
-        conn.execute(
-            f"PRAGMA user_version = {CURRENT_SCHEMA_VERSION}"
-        )
+        if current_user_version == 0:
+            migrate_schema_v0_to_v1(conn)
 
         conn.commit()
 
