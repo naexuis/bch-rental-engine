@@ -193,3 +193,140 @@ def test_get_candle_settings_unknown_range_defaults_to_seven_days():
     expected = get_candle_settings("Past 7 Days")
 
     assert result == expected
+
+
+def test_fetch_yfinance_ohlc_normalizes_datetime_data(
+    monkeypatch,
+):
+    from dashboard.market_utils import (
+        fetch_yfinance_ohlc,
+    )
+    import dashboard.market_utils as market_utils
+
+    raw_df = pd.DataFrame(
+        {
+            "Datetime": pd.to_datetime(
+                [
+                    "2026-08-08 10:00:00",
+                    "2026-08-08 11:00:00",
+                ]
+            ),
+            "Open": [500.0, 501.0],
+            "High": [505.0, 506.0],
+            "Low": [495.0, 496.0],
+            "Close": [502.0, 503.0],
+            "Volume": [1000, 1200],
+        }
+    ).set_index("Datetime")
+
+    class FakeTicker:
+        def __init__(self, ticker):
+            assert ticker == "BCH-USD"
+
+        def history(self, period, interval):
+            assert period == "1d"
+            assert interval == "15m"
+            return raw_df.copy()
+
+    monkeypatch.setattr(
+        market_utils.yf,
+        "Ticker",
+        FakeTicker,
+    )
+
+    result = fetch_yfinance_ohlc(
+        ticker="BCH-USD",
+        period="1d",
+        interval="15m",
+    )
+
+    assert list(result.columns) == [
+        "time",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+    ]
+
+    assert len(result) == 2
+    assert result.iloc[0]["open"] == 500.0
+    assert result.iloc[1]["close"] == 503.0
+
+
+def test_fetch_yfinance_ohlc_supports_date_index(
+    monkeypatch,
+):
+    from dashboard.market_utils import (
+        fetch_yfinance_ohlc,
+    )
+    import dashboard.market_utils as market_utils
+
+    raw_df = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(
+                [
+                    "2026-08-07",
+                    "2026-08-08",
+                ]
+            ),
+            "Open": [490.0, 500.0],
+            "High": [500.0, 510.0],
+            "Low": [485.0, 495.0],
+            "Close": [495.0, 505.0],
+            "Volume": [5000, 6000],
+        }
+    ).set_index("Date")
+
+    class FakeTicker:
+        def __init__(self, ticker):
+            pass
+
+        def history(self, period, interval):
+            return raw_df.copy()
+
+    monkeypatch.setattr(
+        market_utils.yf,
+        "Ticker",
+        FakeTicker,
+    )
+
+    result = fetch_yfinance_ohlc(
+        ticker="BCH-USD",
+        period="1mo",
+        interval="1d",
+    )
+
+    assert "time" in result.columns
+    assert len(result) == 2
+
+
+def test_fetch_yfinance_ohlc_empty_history_returns_empty_dataframe(
+    monkeypatch,
+):
+    from dashboard.market_utils import (
+        fetch_yfinance_ohlc,
+    )
+    import dashboard.market_utils as market_utils
+
+    class FakeTicker:
+        def __init__(self, ticker):
+            pass
+
+        def history(self, period, interval):
+            return pd.DataFrame()
+
+    monkeypatch.setattr(
+        market_utils.yf,
+        "Ticker",
+        FakeTicker,
+    )
+
+    result = fetch_yfinance_ohlc(
+        ticker="BCH-USD",
+        period="1d",
+        interval="15m",
+    )
+
+    assert isinstance(result, pd.DataFrame)
+    assert result.empty
