@@ -10,6 +10,7 @@ from scripts.storage.storage_manager import (
     vacuum_database,
     StorageHealth,
     get_storage_health,
+    CURRENT_SCHEMA_VERSION,
 )
 
 
@@ -166,3 +167,17 @@ def test_initialize_history_database_adds_canonical_decision_column(
         "WATCH",
         None,
     )
+
+def test_initialize_history_database_sets_current_schema_version(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "state" / "history.db"
+
+    initialize_history_database(db_path)
+
+    with sqlite3.connect(db_path) as conn:
+        user_version = conn.execute(
+            "PRAGMA user_version"
+        ).fetchone()[0]
+
+    assert user_version == CURRENT_SCHEMA_VERSION

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 
 RUN_HISTORY_TABLE: Final[str] = "run_history"
+CURRENT_SCHEMA_VERSION: Final[int] = 1
 
 @dataclass(frozen=True)
 class StorageHealth:
@@ -102,6 +103,10 @@ def initialize_history_database(db_path: Path) -> None:
                     ADD COLUMN {column_name} {column_type}
                     """
                 )
+
+        conn.execute(
+            f"PRAGMA user_version = {CURRENT_SCHEMA_VERSION}"
+        )
 
         conn.commit()
 
