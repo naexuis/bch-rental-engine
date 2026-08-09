@@ -1,5 +1,6 @@
 from pathlib import Path
 import sqlite3
+import pytest
 
 from scripts.storage.storage_manager import (
     RUN_HISTORY_TABLE,
@@ -181,3 +182,41 @@ def test_initialize_history_database_sets_current_schema_version(
         ).fetchone()[0]
 
     assert user_version == CURRENT_SCHEMA_VERSION
+
+def test_initialize_history_database_rejects_future_schema_version(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "state" / "history.db"
+    db_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            f"""
+            CREATE TABLE {RUN_HISTORY_TABLE} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL
+            )
+            """
+        )
+
+        conn.execute(
+            f"PRAGMA user_version = {CURRENT_SCHEMA_VERSION + 1}"
+        )
+
+        conn.commit()
+
+    with pytest.raises(
+        RuntimeError,
+        match="newer schema version",
+    ):
+        initialize_history_database(db_path)
+
+    with sqlite3.connect(db_path) as conn:
+        user_version = conn.execute(
+            "PRAGMA user_version"
+        ).fetchone()[0]
+
+    assert user_version == CURRENT_SCHEMA_VERSION + 1

@@ -31,6 +31,16 @@ def initialize_history_database(db_path: Path) -> None:
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
     with sqlite3.connect(db_path) as conn:
+        current_user_version = conn.execute(
+            "PRAGMA user_version"
+        ).fetchone()[0]
+
+        if current_user_version > CURRENT_SCHEMA_VERSION:
+            raise RuntimeError(
+                "Database uses a newer schema version "
+                f"({current_user_version}) than this application supports "
+                f"({CURRENT_SCHEMA_VERSION})."
+            )
         conn.execute(
             f"""
             CREATE TABLE IF NOT EXISTS {RUN_HISTORY_TABLE} (
