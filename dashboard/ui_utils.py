@@ -4,6 +4,8 @@ import math
 
 import pandas as pd
 
+import streamlit as st
+
 
 def safe_num(value, default=0.0):
     if pd.isna(value):
@@ -72,6 +74,7 @@ def fmt_hashrate_from_ph(value_ph):
     value_mh = value_gh * 1_000
     return f"{value_mh:,.2f} MH/s"
 
+
 def fmt_large_number(value):
     value = safe_num(value)
 
@@ -89,6 +92,7 @@ def fmt_large_number(value):
 
     return f"{value:,.0f}"
 
+
 def progress_pct(
     value: float,
     max_value: float = 100.0,
@@ -101,3 +105,27 @@ def progress_pct(
 
     pct = int(round((value / max_value) * 100))
     return max(0, min(100, pct))
+
+
+def render_decision_status(
+    action: str,
+) -> None:
+    action = str(
+        action or "WAIT"
+    ).upper()
+
+    if action in [
+        "RENT",
+        "STRONG_RENT",
+    ]:
+        st.success("🟢 RENT")
+
+    elif action in [
+        "WATCH",
+        "WEAK_WATCH",
+        "MONITOR",
+    ]:
+        st.warning("🟡 WATCH")
+
+    else:
+        st.error("🔴 WAIT")
