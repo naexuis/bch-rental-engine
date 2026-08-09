@@ -21,3 +21,15 @@ def test_streamlit_config_disables_automatic_sidebar_navigation():
     config = config_path.read_text()
 
     assert "showSidebarNavigation = false" in config
+
+
+def test_engine_dockerfile_supports_dashboard_python_imports():
+    dockerfile = Path("Dockerfile").read_text()
+
+    assert "ENV PYTHONPATH=/app" in dockerfile
+
+
+def test_engine_dockerfile_includes_streamlit_configuration():
+    dockerfile = Path("Dockerfile").read_text()
+
+    assert "COPY .streamlit /app/.streamlit" in dockerfile
