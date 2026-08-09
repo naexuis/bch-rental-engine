@@ -30,6 +30,11 @@ from scripts.storage.history_manager import (
     insert_history_row,
 )
 
+from scripts.config_manager import (
+    get_config_value as scripts_get_config_value,
+    load_config_override,
+)
+
 
 # =============================================================================
 # CONFIG
@@ -59,20 +64,9 @@ MRR_LISTINGS_PATH = CONFIG_DIR / "mrr_listings.json"
 HISTORY_DB_PATH = STATE_DIR / "bch_rental_history.sqlite"
 
 def load_dashboard_config_override() -> Dict[str, Any]:
-    if not CONFIG_OVERRIDE_PATH.exists():
-        return {}
-
-    try:
-        with CONFIG_OVERRIDE_PATH.open("r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        if not isinstance(data, dict):
-            return {}
-
-        return data
-
-    except Exception:
-        return {}
+    return load_config_override(
+        CONFIG_OVERRIDE_PATH
+    )
 
 
 def get_config_value(
@@ -81,23 +75,13 @@ def get_config_value(
     default: Any,
     cast_type: type = float,
 ) -> Any:
-    override = load_dashboard_config_override()
-
-    if key in override:
-        try:
-            return cast_type(override[key])
-        except Exception:
-            return default
-
-    value = os.getenv(env_key)
-
-    if value is None:
-        return default
-
-    try:
-        return cast_type(value)
-    except Exception:
-        return default
+    return scripts_get_config_value(
+        key=key,
+        env_key=env_key,
+        default=default,
+        config_override_path=CONFIG_OVERRIDE_PATH,
+        cast_type=cast_type,
+    )
 
 BUDGET_MIN_USD = get_config_value(
     key="budget_min_usd",
