@@ -4,7 +4,10 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from scripts.storage.storage_manager import initialize_history_database
+from scripts.storage.storage_manager import (
+    get_database_size_bytes,
+    initialize_history_database,
+)
 
 
 def get_history_rows(
@@ -226,3 +229,41 @@ def get_history_trend_windows(
                 }
 
     return trends
+
+def get_history_statistics(
+    db_path: Path,
+) -> dict[str, Any]:
+    """
+    Return basic execution-history statistics.
+    """
+    initialize_history_database(db_path)
+
+    with sqlite3.connect(db_path) as conn:
+        row = conn.execute(
+            """
+            SELECT
+                COUNT(*) AS record_count,
+                MIN(timestamp) AS oldest_timestamp,
+                MAX(timestamp) AS newest_timestamp
+            FROM run_history
+            """
+        ).fetchone()
+
+    if row is None:
+        return {
+            "record_count": 0,
+            "oldest_timestamp": None,
+            "newest_timestamp": None,
+            "database_size_bytes": get_database_size_bytes(
+                db_path
+            ),
+        }
+
+    return {
+        "record_count": int(row[0]),
+        "oldest_timestamp": row[1],
+        "newest_timestamp": row[2],
+        "database_size_bytes": get_database_size_bytes(
+            db_path
+        ),
+    }
