@@ -775,14 +775,26 @@ Verify recovery procedure:
 
 Store release artifacts and metadata.
 
-- [ ] Git tag created
-- [ ] CHANGELOG finalized
-- [ ] Release notes archived
-- [ ] Documentation committed
-- [ ] Docker image version recorded
-- [ ] Release commit recorded
-- [ ] Schema version recorded
-- [ ] Production deployment date recorded
+- [x] Git tag created
+- [x] CHANGELOG finalized
+- [x] Release notes archived
+- [x] Documentation committed
+- [x] Docker image version recorded
+- [x] Release commit recorded
+- [x] Schema version recorded
+- [x] Production deployment date recorded
+
+Version: `v0.2.0`
+
+Release commit: `7060738a61622c839d428253b2be474c90f26657`
+
+Production image: `ghcr.io/naexuis/bch-rental-engine:0.2.0`
+
+GHCR digest: `sha256:66937fd74f760bb9edf6a99e0f2a28a9e88822e8bb19d767b9d3ffac6b004c76`
+
+Database schema version: `1`
+
+Production deployment and validation date: `2026-08-09`
 
 ---
 
@@ -838,7 +850,7 @@ Production Validated
 - [x] Production storage and history verification
 - [x] Release version promoted to v0.2.0
 - [x] Release notes prepared
-- [ ] Create and push Git tag `v0.2.0`
+- [x] Create and push Git tag `v0.2.0`
 
 ---
 
@@ -866,34 +878,34 @@ Forecast Intelligence remains planned for Version 0.4.
 
 ## Development
 
-- [ ] Approved
+- [x] Approved
 
 ## Testing
 
-- [ ] Approved
+- [x] Approved
 
 ## Documentation
 
-- [ ] Approved
+- [x] Approved
 
 ## Production
 
-- [ ] Approved
+- [x] Approved
 
 Release Date:
 
 ```text
-_____________________________
+2026-08-09
 ```
 
 Version:
 
 ```text
-_____________________________
+v0.2.0
 ```
 
 Approved By:
 
 ```text
-_____________________________
+Marcus Hilliard
 ```
