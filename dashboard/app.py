@@ -251,6 +251,7 @@ elif page == "History":
 
 elif page == "Storage":
     render_storage_page(
+        state=state,
         db_path=DB_PATH,
         config_override_path=CONFIG_OVERRIDE_PATH,
     )

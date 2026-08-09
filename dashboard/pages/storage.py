@@ -18,6 +18,7 @@ from scripts.storage.storage_manager import (
 
 def render_storage_page(
     *,
+    state: dict,
     db_path: Path,
     config_override_path: Path,
 ) -> None:
@@ -38,10 +39,15 @@ def render_storage_page(
         config_override_path,
     )
 
+    state_config = state.get("config", {}) or {}
+
     history_max_size_bytes = int(
         override.get(
             "history_max_size_bytes",
-            1_073_741_824,
+            state_config.get(
+                "history_max_size_bytes",
+                1_073_741_824,
+            ),
         )
     )
 

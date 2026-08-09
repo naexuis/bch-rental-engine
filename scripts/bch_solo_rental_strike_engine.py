@@ -2944,6 +2944,7 @@ def run_engine() -> Dict[str, Any]:
             "hashrate_min_ph": HASHRATE_MIN_PH,
             "hashrate_max_ph": HASHRATE_MAX_PH,
             "hashrate_step_ph": HASHRATE_STEP_PH,
+            "history_max_size_bytes": HISTORY_MAX_SIZE_BYTES,
         },
         "trends": trends,
         "storage_health": get_storage_health_record(),
