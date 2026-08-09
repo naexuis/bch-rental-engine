@@ -87,6 +87,22 @@ def render_settings_page(
         )
     )
 
+    current_history_max_size_bytes = int(
+        resolve_setting_value(
+            key="history_max_size_bytes",
+            override=override,
+            state_config=state_config,
+            latest=latest,
+            default=1_073_741_824,
+        )
+    )
+
+    current_history_max_size_gib = (
+        0.0
+        if current_history_max_size_bytes == 0
+        else current_history_max_size_bytes / (1024 ** 3)
+    )
+
     st.markdown("### Engine Budget Controls")
     st.write(
         "Use these settings to control the budget range the engine evaluates. "
@@ -102,6 +118,19 @@ def render_settings_page(
     h1.metric("Hashrate Min", f"{current_hashrate_min:,.0f} PH/s")
     h2.metric("Hashrate Max", f"{current_hashrate_max:,.0f} PH/s")
     h3.metric("Hashrate Step", f"{current_hashrate_step:,.0f} PH/s")
+
+    st.markdown("### History Storage")
+
+    if current_history_max_size_bytes == 0:
+        st.metric(
+            "History Retention",
+            "Unlimited",
+        )
+    else:
+        st.metric(
+            "History Retention",
+            f"{current_history_max_size_gib:.2f} GiB",
+        )
 
     st.divider()
 
@@ -158,6 +187,20 @@ def render_settings_page(
             step=10,
         )
 
+        st.markdown("### Edit History Retention")
+
+        history_max_size_gib = st.number_input(
+            "History Max Size GiB",
+            min_value=0.0,
+            max_value=1024.0,
+            value=float(current_history_max_size_gib),
+            step=0.25,
+            help=(
+                "Set to 0 for unlimited history. "
+                "The default is 1 GiB."
+            ),
+        )
+
         submitted = st.form_submit_button("Save Settings")
 
     if submitted:
@@ -179,6 +222,13 @@ def render_settings_page(
             for error in errors:
                 st.error(error)
         else:
+
+            history_max_size_bytes = (
+                0
+                if history_max_size_gib == 0
+                else int(history_max_size_gib * (1024 ** 3))
+            )
+
             save_config_override(
                 {
                     "budget_min_usd": int(budget_min),
@@ -187,6 +237,7 @@ def render_settings_page(
                     "hashrate_min_ph": int(hashrate_min),
                     "hashrate_max_ph": int(hashrate_max),
                     "hashrate_step_ph": int(hashrate_step),
+                    "history_max_size_bytes": history_max_size_bytes,
                 },
                 config_dir=config_dir,
                 config_override_path=config_override_path,
