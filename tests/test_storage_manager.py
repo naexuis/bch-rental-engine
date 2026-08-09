@@ -12,6 +12,7 @@ from scripts.storage.storage_manager import (
     StorageHealth,
     get_storage_health,
     CURRENT_SCHEMA_VERSION,
+    apply_schema_migrations,
 )
 
 
@@ -294,3 +295,80 @@ def test_initialize_history_database_upgrades_version_zero_and_preserves_rows(
         "WATCH",
         None,
     )
+
+def test_apply_schema_migrations_upgrades_version_zero_to_current(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "state" / "history.db"
+    db_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            f"""
+            CREATE TABLE {RUN_HISTORY_TABLE} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                opportunity_action TEXT
+            )
+            """
+        )
+        conn.execute("PRAGMA user_version = 0")
+        conn.commit()
+
+        apply_schema_migrations(
+            conn,
+            current_version=0,
+        )
+
+        user_version = conn.execute(
+            "PRAGMA user_version"
+        ).fetchone()[0]
+
+        columns = {
+            row[1]
+            for row in conn.execute(
+                f"PRAGMA table_info({RUN_HISTORY_TABLE})"
+            ).fetchall()
+        }
+
+    assert user_version == CURRENT_SCHEMA_VERSION
+    assert "canonical_decision" in columns
+
+def test_apply_schema_migrations_leaves_current_version_unchanged(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "state" / "history.db"
+    db_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            f"""
+            CREATE TABLE {RUN_HISTORY_TABLE} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL
+            )
+            """
+        )
+
+        conn.execute(
+            f"PRAGMA user_version = {CURRENT_SCHEMA_VERSION}"
+        )
+
+        conn.commit()
+
+        apply_schema_migrations(
+            conn,
+            current_version=CURRENT_SCHEMA_VERSION,
+        )
+
+        user_version = conn.execute(
+            "PRAGMA user_version"
+        ).fetchone()[0]
+
+    assert user_version == CURRENT_SCHEMA_VERSION

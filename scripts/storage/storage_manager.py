@@ -59,6 +59,28 @@ def migrate_schema_v0_to_v1(
     conn.execute("PRAGMA user_version = 1")
 
 
+def apply_schema_migrations(
+    conn: sqlite3.Connection,
+    *,
+    current_version: int,
+) -> None:
+    """
+    Apply all schema migrations required to reach the current version.
+    """
+    version = current_version
+
+    if version == 0:
+        migrate_schema_v0_to_v1(conn)
+        version = 1
+
+    if version != CURRENT_SCHEMA_VERSION:
+        raise RuntimeError(
+            "Unable to migrate database schema "
+            f"from version {current_version} "
+            f"to version {CURRENT_SCHEMA_VERSION}."
+        )
+
+
 def initialize_history_database(db_path: Path) -> None:
     """
     Create the history database and apply all currently supported schema
@@ -126,8 +148,10 @@ def initialize_history_database(db_path: Path) -> None:
             """
         )
 
-        if current_user_version == 0:
-            migrate_schema_v0_to_v1(conn)
+        apply_schema_migrations(
+            conn,
+            current_version=current_user_version,
+        )
 
         conn.commit()
 
