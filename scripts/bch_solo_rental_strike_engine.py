@@ -28,6 +28,7 @@ from scripts.storage.history_manager import (
     get_history_trend_windows,
     get_latest_value,
     insert_history_row,
+    enforce_history_size_limit,
 )
 
 from scripts.config_manager import (
@@ -62,6 +63,8 @@ STATE_PATH = STATE_DIR / "bch_solo_rental_strike_engine.json"
 MRR_LISTINGS_PATH = CONFIG_DIR / "mrr_listings.json"
 
 HISTORY_DB_PATH = STATE_DIR / "bch_rental_history.sqlite"
+
+DEFAULT_HISTORY_MAX_SIZE_BYTES = 1_073_741_824
 
 def load_dashboard_config_override() -> Dict[str, Any]:
     return load_config_override(
@@ -123,6 +126,13 @@ HASHRATE_STEP_PH = get_config_value(
     env_key="BCH_HASHRATE_STEP_PH",
     default=50,
     cast_type=float,
+)
+
+HISTORY_MAX_SIZE_BYTES = get_config_value(
+    key="history_max_size_bytes",
+    env_key="BCH_HISTORY_MAX_SIZE_BYTES",
+    default=DEFAULT_HISTORY_MAX_SIZE_BYTES,
+    cast_type=int,
 )
 
 IDEAL_MIN_HOURS = float(os.getenv("BCH_IDEAL_MIN_HOURS", "1.0"))
@@ -2199,6 +2209,12 @@ def write_history_row(
         db_path=HISTORY_DB_PATH,
         record=record,
     )
+
+    if HISTORY_MAX_SIZE_BYTES > 0:
+        enforce_history_size_limit(
+            HISTORY_DB_PATH,
+            max_size_bytes=HISTORY_MAX_SIZE_BYTES,
+        )
 
 def get_latest_opportunity_score() -> Optional[float]:
     """
