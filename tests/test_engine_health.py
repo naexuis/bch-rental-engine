@@ -596,3 +596,172 @@ def test_load_previous_engine_health_returns_empty_when_health_is_not_object(
     )
 
     assert health == {}
+
+
+def test_classify_heartbeat_status_is_healthy_when_heartbeat_is_current():
+    from scripts.health.engine_health import (
+        classify_heartbeat_status,
+    )
+
+    status = classify_heartbeat_status(
+        heartbeat="2026-08-10T00:00:00+00:00",
+        current_time="2026-08-10T00:05:00+00:00",
+        stale_after_minutes=15,
+    )
+
+    assert status == "HEALTHY"
+
+
+def test_classify_heartbeat_status_is_stale_when_heartbeat_is_old():
+    from scripts.health.engine_health import (
+        classify_heartbeat_status,
+    )
+
+    status = classify_heartbeat_status(
+        heartbeat="2026-08-10T00:00:00+00:00",
+        current_time="2026-08-10T00:20:00+00:00",
+        stale_after_minutes=15,
+    )
+
+    assert status == "STALE"
+
+
+def test_classify_heartbeat_status_is_healthy_at_stale_threshold():
+    from scripts.health.engine_health import (
+        classify_heartbeat_status,
+    )
+
+    status = classify_heartbeat_status(
+        heartbeat="2026-08-10T00:00:00+00:00",
+        current_time="2026-08-10T00:15:00+00:00",
+        stale_after_minutes=15,
+    )
+
+    assert status == "HEALTHY"
+
+
+def test_classify_heartbeat_status_returns_unknown_when_heartbeat_is_invalid():
+    from scripts.health.engine_health import (
+        classify_heartbeat_status,
+    )
+
+    status = classify_heartbeat_status(
+        heartbeat="not-a-timestamp",
+        current_time="2026-08-10T00:20:00+00:00",
+        stale_after_minutes=15,
+    )
+
+    assert status == "UNKNOWN"
+
+
+def test_classify_heartbeat_status_returns_unknown_when_current_time_is_invalid():
+    from scripts.health.engine_health import (
+        classify_heartbeat_status,
+    )
+
+    status = classify_heartbeat_status(
+        heartbeat="2026-08-10T00:00:00+00:00",
+        current_time="not-a-timestamp",
+        stale_after_minutes=15,
+    )
+
+    assert status == "UNKNOWN"
+
+
+def test_classify_heartbeat_status_returns_unknown_when_heartbeat_is_missing():
+    from scripts.health.engine_health import (
+        classify_heartbeat_status,
+    )
+
+    status = classify_heartbeat_status(
+        heartbeat=None,
+        current_time="2026-08-10T00:20:00+00:00",
+        stale_after_minutes=15,
+    )
+
+    assert status == "UNKNOWN"
+
+
+def test_evaluate_engine_health_status_is_healthy_for_current_success():
+    from scripts.health.engine_health import (
+        evaluate_engine_health_status,
+    )
+
+    health = {
+        "status": "HEALTHY",
+        "heartbeat": "2026-08-10T00:00:00+00:00",
+        "last_successful_execution": "2026-08-10T00:00:00+00:00",
+        "consecutive_failures": 0,
+    }
+
+    status = evaluate_engine_health_status(
+        health=health,
+        current_time="2026-08-10T00:05:00+00:00",
+        stale_after_minutes=15,
+    )
+
+    assert status == "HEALTHY"
+
+
+def test_evaluate_engine_health_status_preserves_degraded_execution_state():
+    from scripts.health.engine_health import (
+        evaluate_engine_health_status,
+    )
+
+    health = {
+        "status": "DEGRADED",
+        "heartbeat": "2026-08-10T00:04:00+00:00",
+        "last_successful_execution": "2026-08-10T00:00:00+00:00",
+        "last_failure_timestamp": "2026-08-10T00:04:00+00:00",
+        "consecutive_failures": 1,
+    }
+
+    status = evaluate_engine_health_status(
+        health=health,
+        current_time="2026-08-10T00:05:00+00:00",
+        stale_after_minutes=15,
+    )
+
+    assert status == "DEGRADED"
+
+
+def test_evaluate_engine_health_status_is_stale_for_old_success_heartbeat():
+    from scripts.health.engine_health import (
+        evaluate_engine_health_status,
+    )
+
+    health = {
+        "status": "HEALTHY",
+        "heartbeat": "2026-08-10T00:00:00+00:00",
+        "last_successful_execution": "2026-08-10T00:00:00+00:00",
+        "consecutive_failures": 0,
+    }
+
+    status = evaluate_engine_health_status(
+        health=health,
+        current_time="2026-08-10T00:20:00+00:00",
+        stale_after_minutes=15,
+    )
+
+    assert status == "STALE"
+
+
+def test_evaluate_engine_health_status_is_unknown_when_heartbeat_is_missing():
+    from scripts.health.engine_health import (
+        evaluate_engine_health_status,
+    )
+
+    health = {
+        "status": "HEALTHY",
+        "heartbeat": None,
+        "last_successful_execution": "2026-08-10T00:00:00+00:00",
+        "consecutive_failures": 0,
+    }
+
+    status = evaluate_engine_health_status(
+        health=health,
+        current_time="2026-08-10T00:20:00+00:00",
+        stale_after_minutes=15,
+    )
+
+    assert status == "UNKNOWN"

@@ -74,3 +74,45 @@ def load_previous_engine_health(
         return {}
 
     return health
+
+
+def classify_heartbeat_status(
+    heartbeat: str,
+    current_time: str,
+    stale_after_minutes: int,
+) -> str:
+    from datetime import datetime
+
+    try:
+        heartbeat_dt = datetime.fromisoformat(
+            heartbeat
+        )
+        current_dt = datetime.fromisoformat(
+            current_time
+        )
+    except (TypeError, ValueError):
+        return "UNKNOWN"
+
+    age_minutes = (
+        current_dt - heartbeat_dt
+    ).total_seconds() / 60
+
+    if age_minutes > stale_after_minutes:
+        return "STALE"
+
+    return "HEALTHY"
+
+
+def evaluate_engine_health_status(
+    health: dict,
+    current_time: str,
+    stale_after_minutes: int,
+) -> str:
+    if health.get("status") == "DEGRADED":
+        return "DEGRADED"
+
+    return classify_heartbeat_status(
+        heartbeat=health.get("heartbeat"),
+        current_time=current_time,
+        stale_after_minutes=stale_after_minutes,
+    )
