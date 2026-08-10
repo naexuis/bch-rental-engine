@@ -37,6 +37,12 @@ from scripts.config_manager import (
     load_config_override,
 )
 
+from scripts.health.engine_health import (
+    build_failure_health,
+    build_success_health,
+    load_previous_engine_health,
+)
+
 
 # =============================================================================
 # CONFIG
@@ -2829,6 +2835,16 @@ def run_engine() -> Dict[str, Any]:
             market=market,
             error_message=str(exc),
         )
+
+        previous_health = load_previous_engine_health(
+            STATE_PATH,
+        )
+
+        record["engine_health"] = build_success_health(
+            timestamp=now_utc(),
+            previous_health=previous_health,
+        )
+
         write_jsonl_log(LOG_PATH, record)
         write_latest_state(STATE_PATH, record)
         return record
@@ -2956,6 +2972,15 @@ def run_engine() -> Dict[str, Any]:
         "interpretation": interpretation,
     }
 
+    previous_health = load_previous_engine_health(
+        STATE_PATH,
+    )
+
+    record["engine_health"] = build_success_health(
+        timestamp=now_utc(),
+        previous_health=previous_health,
+    )
+
     write_jsonl_log(LOG_PATH, record)
     write_latest_state(STATE_PATH, record)
 
@@ -3003,10 +3028,20 @@ def main() -> None:
         print(f"Telegram sent: {result['telegram_sent']}")
 
     except Exception as exc:
+        timestamp = now_utc()
+
+        previous_health = load_previous_engine_health(
+            STATE_PATH,
+        )
+
         error_record = {
-            "timestamp": now_utc(),
+            "timestamp": timestamp,
             "error": str(exc),
             "traceback": traceback.format_exc(),
+            "engine_health": build_failure_health(
+                timestamp=timestamp,
+                previous_health=previous_health,
+            ),
         }
 
         write_jsonl_log(LOG_PATH, error_record)
